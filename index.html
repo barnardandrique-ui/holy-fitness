@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Holy Fitness ✝️ — Train With Intent</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+<!-- ════════════════════════════════ AUTH MODAL ════════════════════════════════ -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-logo">
+      <svg viewBox="0 0 28 28" fill="none"><path d="M12 2H16V10H24V16H16V26H12V16H4V10H12V2Z" fill="#9B1C1C"/></svg>
+      Holy Fitness ✝️
+    </div>
+    <div class="modal-headline">JOIN <span>Holy Fitness ✝️</span></div>
+    <p class="modal-sub">Create your account to access AI-powered training plans.</p>
+
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+      <button class="modal-tab" id="tab-signin" onclick="switchTab('signin')">Sign In</button>
+    </div>
+
+    <div id="form-signup">
+      <div class="form-field">
+        <label>Full Name</label>
+        <input type="text" id="signup-name" placeholder="Alex Johnson" />
+      </div>
+      <div class="form-field">
+        <label>Email</label>
+        <input type="text" id="signup-email" placeholder="you@email.com" />
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="Min. 6 characters" />
+      </div>
+      <button class="btn-modal-submit" onclick="doSignup()">Create Account →</button>
+      <div class="modal-error" id="signup-error"></div>
+    </div>
+
+    <div id="form-signin" style="display:none;">
+      <div class="form-field">
+        <label>Email</label>
+        <input type="text" id="signin-email" placeholder="you@email.com" />
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" id="signin-password" placeholder="Your password" />
+      </div>
+      <button class="btn-modal-submit" onclick="doSignin()">Sign In →</button>
+      <div class="modal-error" id="signin-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ NAV ════════════════════════════════ -->
+<nav>
+  <div class="logo" onclick="goHome()">
+    <svg viewBox="0 0 28 28" fill="none"><path d="M12 2H16V10H24V16H16V26H12V16H4V10H12V2Z" fill="#9B1C1C"/></svg>
+    Holy Fitness ✝️
+  </div>
+  <div class="nav-right">
+    <button class="btn-nav-ghost" id="nav-dashboard-link" style="display:none;" onclick="enterApp()">Dashboard</button>
+    <span class="nav-user" id="nav-user-label" style="display:none;"></span>
+    <button class="btn-nav" id="nav-cta" onclick="openModal()">Sign In</button>
+    <button class="btn-nav-ghost" id="nav-logout" style="display:none;" onclick="doLogout()">Log Out</button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════ PAGE: HOME ════════════════════════════════ -->
+<div class="page active" id="page-home">
+
+  <section class="hero">
+    <p class="hero-eyebrow">Fitness Programs &nbsp;·&nbsp; Men &amp; Women</p>
+    <h1>TRAIN WITH<br><span>INTENT.</span></h1>
+    <p>AI-generated 7-day programs with personalised nutrition, training splits and sleep protocols — built uniquely for your body and your goal.</p>
+    <div class="hero-buttons">
+      <button class="btn-primary" onclick="handleGetStarted()">Get Started</button>
+      <button class="btn-outline" onclick="document.getElementById('home-programs').scrollIntoView({behavior:'smooth'})">View Programs</button>
+    </div>
+  </section>
+
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-number">2,400+</div><div class="stat-label">Active Members</div></div>
+    <div class="stat-item"><div class="stat-number">8</div><div class="stat-label">Program Tracks</div></div>
+    <div class="stat-item"><div class="stat-number">94%</div><div class="stat-label">Goal Hit Rate</div></div>
+    <div class="stat-item"><div class="stat-number">7-Day</div><div class="stat-label">AI Plans</div></div>
+  </div>
+
+  <section class="section-dark" id="home-programs">
+    <p class="section-label" style="color:rgba(255,255,255,0.45)">What We Offer</p>
+    <h2 class="section-heading">Choose Your<br><span style="color:var(--red-bright)">Track</span></h2>
+    <p class="section-sub">Every plan is AI-generated and unique to you — your body stats, goal, diet, and lifestyle all shape the output.</p>
+    <div class="programs-grid">
+      <div class="program-card"><span class="program-tag">Women · Lean</span><div class="program-name">Sculpt & Define</div><div class="program-desc">Low-volume, high-frequency resistance training tuned for body composition and hormonal cycles.</div></div>
+      <div class="program-card"><span class="program-tag">Women · Build</span><div class="program-name">Strength Recomp</div><div class="program-desc">Progressive overload with strategic deload weeks. Built for women ready to build serious muscle.</div></div>
+      <div class="program-card"><span class="program-tag">Men · Hypertrophy</span><div class="program-name">Mass Protocol</div><div class="program-desc">Volume-first hypertrophy with compound focus and accessory work. Built for raw size gains.</div></div>
+      <div class="program-card"><span class="program-tag">Men · Strength</span><div class="program-name">Power Build</div><div class="program-desc">Conjugate-influenced periodisation. Squat, bench, deadlift — everything else serves the big three.</div></div>
+      <div class="program-card"><span class="program-tag">Any · Cut</span><div class="program-name">Competition Cut</div><div class="program-desc">Calorie-managed lean phase preserving muscle. Cardio escalation built into the schedule.</div></div>
+      <div class="program-card"><span class="program-tag">Any · Beginner</span><div class="program-name">Foundation</div><div class="program-desc">Technique-first full-body programming for those new to structured training. 3 days a week.</div></div>
+    </div>
+  </section>
+
+  <section class="section-red">
+    <p class="section-label">The Process</p>
+    <h2 class="section-heading">How Holy Fitness Works</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">01</div><div class="step-content"><h3>Create Your Account</h3><p>Sign up in seconds. Your profile secures your data and personalised plans.</p></div></div>
+      <div class="step"><div class="step-num">02</div><div class="step-content"><h3>Enter Your Stats</h3><p>Gender, height, weight, body fat, age, training experience and lifestyle — all factored in.</p></div></div>
+      <div class="step"><div class="step-num">03</div><div class="step-content"><h3>Set Your Goal</h3><p>Fat loss, muscle gain, recomposition, strength or performance. Optional cycle and enhanced details.</p></div></div>
+      <div class="step"><div class="step-num">04</div><div class="step-content"><h3>AI Builds Your Plan</h3><p>Our AI generates a unique 7-day roadmap: training splits, full nutrition with meals, and sleep protocols.</p></div></div>
+      <div class="step"><div class="step-num">05</div><div class="step-content"><h3>Execute & Regenerate</h3><p>Follow your weekly plan, then regenerate for next week with progressive adjustments built in.</p></div></div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <h2>Ready To Start<br>Forging?</h2>
+    <p>Sign up free — get your first AI-generated 7-day plan in under a minute.</p>
+    <button class="btn-white" onclick="openModal()">Join Holy Fitness Free</button>
+  </section>
+
+  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised AI Fitness Programs &nbsp;·&nbsp; All rights reserved.</footer>
+</div>
+
+<!-- ════════════════════════════════ PAGE: PROGRESS DASHBOARD ════════════════════════════════ -->
+<div class="page" id="page-progress">
+  <div class="dashboard-hero">
+    <div class="dashboard-welcome">WELCOME BACK, <span id="progress-name">ATHLETE</span></div>
+    <div class="dashboard-sub" id="progress-sub">Here's where you left off.</div>
+  </div>
+
+  <div class="intake-section">
+    <div class="progress-dots" id="progress-dots"></div>
+
+    <!-- Active day card -->
+    <div class="today-card" id="today-card-active">
+      <div class="today-card-header">
+        <div>
+          <div class="today-label" id="today-label">DAY 1 · MONDAY</div>
+          <div class="today-type" id="today-type">Push — Chest, Shoulders, Triceps</div>
+        </div>
+        <div class="today-badge" id="today-badge">TODAY</div>
+      </div>
+      <div class="today-stats">
+        <div class="today-stat"><div class="today-stat-value" id="today-calories">—</div><div class="today-stat-label">kcal target</div></div>
+        <div class="today-stat"><div class="today-stat-value" id="today-sleep">—</div><div class="today-stat-label">sleep target</div></div>
+        <div class="today-stat"><div class="today-stat-value" id="today-exercises">—</div><div class="today-stat-label">exercises</div></div>
+      </div>
+
+      <div class="log-tiles">
+        <button class="log-tile" onclick="openWorkoutLogger()">
+          <div class="log-tile-icon">🏋️</div>
+          <div class="log-tile-title">Log Workout</div>
+          <div class="log-tile-status" id="status-workout">Not logged yet</div>
+        </button>
+        <button class="log-tile" onclick="openMealLogger()">
+          <div class="log-tile-icon">🍽️</div>
+          <div class="log-tile-title">Log Meals</div>
+          <div class="log-tile-status" id="status-meals">Not logged yet</div>
+        </button>
+        <button class="log-tile" onclick="openSleepLogger()">
+          <div class="log-tile-icon">🌙</div>
+          <div class="log-tile-title">Log Sleep</div>
+          <div class="log-tile-status" id="status-sleep">Not logged yet</div>
+        </button>
+      </div>
+
+      <button class="btn-generate" style="margin-top:24px;" onclick="advanceDay()" id="advance-day-btn">
+        Mark Day Complete &amp; Continue →
+      </button>
+    </div>
+
+    <!-- Week complete state -->
+    <div class="today-card" id="today-card-complete" style="display:none; text-align:center;">
+      <div style="font-size:2.4rem; margin-bottom:6px;">🎉</div>
+      <div class="intake-title" style="margin-bottom:8px;">WEEK <span>COMPLETE</span></div>
+      <p style="color:var(--gray-mid); font-size:0.92rem; margin-bottom:24px;">You made it through all 7 days. Ready for a fresh plan for next week?</p>
+      <button class="btn-generate" onclick="startNewPlan()">Generate Next Week's Plan</button>
+    </div>
+
+    <div class="progress-secondary-links">
+      <button class="btn-outline" onclick="viewFullPlan()">View Full 7-Day Plan</button>
+      <button class="btn-nav-ghost" onclick="confirmStartNewPlan()">Start a New Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ LOGGER MODALS ════════════════════════════════ -->
+<div class="modal-overlay" id="workout-modal">
+  <div class="modal" style="max-width:480px;">
+    <button class="modal-close" onclick="closeLoggerModal('workout-modal')">✕</button>
+    <div class="modal-headline">LOG <span>WORKOUT</span></div>
+    <p class="modal-sub" id="workout-modal-sub">Today's session</p>
+    <div id="workout-modal-body"></div>
+    <button class="btn-modal-submit" onclick="saveWorkoutLog()">Save Workout Log</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="meal-modal">
+  <div class="modal" style="max-width:480px;">
+    <button class="modal-close" onclick="closeLoggerModal('meal-modal')">✕</button>
+    <div class="modal-headline">LOG <span>MEALS</span></div>
+    <p class="modal-sub" id="meal-modal-sub">Today's meals</p>
+    <div id="meal-modal-body"></div>
+    <div class="form-field">
+      <label>Add something not on the plan</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="custom-meal-name" placeholder="e.g. Protein shake" style="flex:2;" />
+        <input type="number" id="custom-meal-cal" placeholder="kcal" style="flex:1;" />
+        <button class="btn-nav-ghost" type="button" onclick="addCustomMeal()">Add</button>
+      </div>
+    </div>
+    <div id="custom-meal-list"></div>
+    <button class="btn-modal-submit" onclick="saveMealLog()">Save Meal Log</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sleep-modal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="closeLoggerModal('sleep-modal')">✕</button>
+    <div class="modal-headline">LOG <span>SLEEP</span></div>
+    <p class="modal-sub" id="sleep-modal-sub">How did last night go?</p>
+    <div class="form-field">
+      <label>Hours Slept</label>
+      <input type="number" id="log-sleep-hours" placeholder="7.5" step="0.5" min="0" max="14" />
+    </div>
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div class="form-group"><label>Bedtime</label><input type="text" id="log-sleep-bedtime" placeholder="10:30 PM" /></div>
+      <div class="form-group"><label>Wake Time</label><input type="text" id="log-sleep-waketime" placeholder="6:30 AM" /></div>
+    </div>
+    <div class="form-field">
+      <label>Sleep Quality</label>
+      <select id="log-sleep-quality"><option value="poor">Poor</option><option value="ok" selected>OK</option><option value="good">Good</option><option value="great">Great</option></select>
+    </div>
+    <div class="form-field">
+      <label>Notes (optional)</label>
+      <input type="text" id="log-sleep-notes" placeholder="Woke up a few times, etc." />
+    </div>
+    <button class="btn-modal-submit" onclick="saveSleepLog()">Save Sleep Log</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ PAGE: DASHBOARD ════════════════════════════════ -->
+<div class="page" id="page-dashboard">
+  <div class="dashboard-hero">
+    <div class="dashboard-welcome">WELCOME BACK, <span id="dash-name">ATHLETE</span></div>
+    <div class="dashboard-sub">Fill in your details and let the AI build your personalised 7-day plan.</div>
+  </div>
+
+  <div class="intake-section">
+    <div class="intake-card" id="intake-card">
+      <div class="intake-title">YOUR <span>PROFILE</span></div>
+      <div class="intake-subtitle">Every field shapes your plan. The more accurate, the better the output.</div>
+
+      <!-- Gender -->
+      <div class="form-group" style="margin-bottom:18px;">
+        <label>Gender</label>
+        <div class="toggle-group">
+          <button class="active" id="btn-male" onclick="setGender('male')">Male</button>
+          <button id="btn-female" onclick="setGender('female')">Female</button>
+        </div>
+      </div>
+
+      <div class="section-divider-form">Body Stats</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Age</label><input type="number" id="f-age" placeholder="25" min="16" max="80" /></div>
+        <div class="form-group"><label>Height (cm)</label><input type="number" id="f-height" placeholder="175" min="140" max="220" /></div>
+        <div class="form-group"><label>Weight (kg)</label><input type="number" id="f-weight" placeholder="80" min="40" max="200" /></div>
+        <div class="form-group"><label>Body Fat % (est.)</label><input type="number" id="f-bf" placeholder="18" min="5" max="55" /></div>
+      </div>
+
+      <div class="section-divider-form">Training & Lifestyle</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Training Days / Week</label>
+          <select id="f-freq"><option value="2">2 days</option><option value="3">3 days</option><option value="4" selected>4 days</option><option value="5">5 days</option><option value="6">6 days</option></select>
+        </div>
+        <div class="form-group">
+          <label>Experience Level</label>
+          <select id="f-exp"><option value="beginner">Beginner (0–1 yr)</option><option value="intermediate" selected>Intermediate (1–3 yr)</option><option value="advanced">Advanced (3+ yr)</option></select>
+        </div>
+        <div class="form-group">
+          <label>Sleep Hours / Night</label>
+          <select id="f-sleep"><option value="5">Under 6 hrs</option><option value="6">6 hrs</option><option value="7" selected>7 hrs</option><option value="8">8 hrs</option><option value="9">9+ hrs</option></select>
+        </div>
+        <div class="form-group">
+          <label>Stress Level</label>
+          <select id="f-stress"><option value="low">Low</option><option value="moderate" selected>Moderate</option><option value="high">High</option></select>
+        </div>
+        <div class="form-group full">
+          <label>Primary Goal</label>
+          <select id="f-goal">
+            <option value="fat loss">Fat Loss — Maximum Cut</option>
+            <option value="recomposition">Body Recomposition</option>
+            <option value="muscle gain" selected>Muscle Gain — Hypertrophy</option>
+            <option value="strength and power">Strength & Power</option>
+            <option value="athletic performance">Athletic Performance</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider-form">Nutrition</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Diet Style</label>
+          <select id="f-diet"><option value="standard">Standard (No Restrictions)</option><option value="high protein">High Protein Focus</option><option value="low carb">Low Carb / Keto</option><option value="vegetarian">Vegetarian</option><option value="vegan">Vegan</option><option value="intermittent fasting">Intermittent Fasting</option></select>
+        </div>
+        <div class="form-group">
+          <label>Food Allergies / Avoidances</label>
+          <input type="text" id="f-allergies" placeholder="e.g. dairy, gluten, nuts" />
+        </div>
+      </div>
+
+      <!-- Women cycle -->
+      <div id="cycle-section" style="display:none;">
+        <div class="section-divider-form">Cycle Phase (Women)</div>
+        <div class="form-group">
+          <label>Current Cycle Phase</label>
+          <select id="f-cycle"><option value="follicular">Follicular (Day 1–14) — High Energy</option><option value="ovulation">Ovulation — Peak Performance</option><option value="luteal">Luteal (Day 15–28) — Recovery Focus</option><option value="menstrual">Menstrual — Active Rest</option><option value="not tracking">Not Tracking</option></select>
+        </div>
+        <div class="disclosure-box">Cycle phase adjusts your weekly training intensity and nutrition targets. Optional — kept private.</div>
+      </div>
+
+      <!-- Enhanced -->
+      <div class="section-divider-form">Enhanced Use (Optional)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Currently On Cycle?</label>
+          <div class="toggle-group">
+            <button class="active" id="btn-natural" onclick="setEnhanced(false)">Natural</button>
+            <button id="btn-enhanced" onclick="setEnhanced(true)">On Cycle</button>
+          </div>
+        </div>
+        <div class="form-group" id="compound-group" style="display:none;">
+          <label>Compound</label>
+          <select id="f-compound"><option value="Testosterone (base)">Testosterone (Base)</option><option value="Testosterone + Deca">Test + Deca</option><option value="Testosterone + Tren">Test + Tren</option><option value="Anavar (Var)">Anavar / Var</option><option value="Winstrol">Winstrol</option><option value="Peptides / HGH">Peptides / HGH</option></select>
+        </div>
+        <div class="form-group" id="cycle-week-group" style="display:none;">
+          <label>Week of Cycle</label>
+          <input type="number" id="f-cycleweek" placeholder="4" min="1" max="20" />
+        </div>
+      </div>
+      <div id="enhanced-disclosure" style="display:none;" class="disclosure-box">Enhanced projections assume responsible use under professional supervision. For planning purposes only — not medical advice.</div>
+
+      <div class="disclosure-box" id="generate-error" style="display:none; margin-top:16px; margin-bottom:0;"></div>
+
+      <button class="btn-generate" id="generate-btn" onclick="generatePlan()">
+        <span>⚡</span> GENERATE MY 7-DAY AI PLAN
+      </button>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-screen" id="loading-screen">
+      <div class="forge-spinner"></div>
+      <div class="loading-title">BUILDING YOUR <span>PLAN</span></div>
+      <p style="font-size:0.88rem;color:var(--gray-mid);margin-bottom:20px;">Our AI is crafting a unique 7-day program just for you.</p>
+      <ul class="loading-steps-list" id="loading-steps">
+        <li id="ls-1">Analysing your body stats &amp; goal</li>
+        <li id="ls-2">Calculating calorie &amp; macro targets</li>
+        <li id="ls-3">Building your training split</li>
+        <li id="ls-4">Generating full meal plans</li>
+        <li id="ls-5">Adding sleep &amp; recovery protocols</li>
+        <li id="ls-6">Finalising your 7-day roadmap</li>
+      </ul>
+    </div>
+
+    <!-- PLAN OUTPUT -->
+    <div class="plan-output" id="plan-output">
+      <div class="plan-header">
+        <div>
+          <div class="plan-header-title">YOUR 7-DAY <span id="ph-goal">PLAN</span></div>
+          <div class="plan-header-meta" id="ph-meta"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-regenerate" style="background:#2a2a2a;" onclick="enterApp()">📊 Go to Dashboard</button>
+          <button class="btn-regenerate" onclick="resetPlan()">↺ New Plan</button>
+        </div>
+      </div>
+
+      <div class="plan-tabs">
+        <button class="plan-tab active" onclick="switchPlanTab('overview')">Overview</button>
+        <button class="plan-tab" onclick="switchPlanTab('training')">Training</button>
+        <button class="plan-tab" onclick="switchPlanTab('nutrition')">Nutrition</button>
+        <button class="plan-tab" onclick="switchPlanTab('sleep')">Sleep & Recovery</button>
+      </div>
+
+      <div class="plan-content">
+        <!-- Overview -->
+        <div class="plan-panel active" id="panel-overview">
+          <div class="overview-grid" id="ov-cards"></div>
+          <div class="ai-prose" id="ov-summary"></div>
+        </div>
+        <!-- Training -->
+        <div class="plan-panel" id="panel-training">
+          <div class="day-grid" id="training-days"></div>
+        </div>
+        <!-- Nutrition -->
+        <div class="plan-panel" id="panel-nutrition">
+          <div class="day-grid" id="nutrition-days"></div>
+        </div>
+        <!-- Sleep -->
+        <div class="plan-panel" id="panel-sleep">
+          <div class="ai-prose" id="sleep-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+</body>
+</html>

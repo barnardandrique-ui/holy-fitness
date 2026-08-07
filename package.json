@@ -1,0 +1,14 @@
+{
+  "name": "holy-fitness",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Holy Fitness — AI-generated 7-day training, nutrition, and sleep plans.",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
