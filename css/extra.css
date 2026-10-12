@@ -1,0 +1,49 @@
+/* css/extra.css — styles for the health check, notes, account dialogs and legal pages */
+
+/* Dialogs can grow taller now (consent text, account options) */
+.modal { max-height: 92vh; overflow-y: auto; }
+
+/* Checkbox lists */
+.check-list { display: flex; flex-direction: column; gap: 11px; margin: 6px 0 4px; }
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; line-height: 1.45; color: #333; cursor: pointer; }
+.check input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--red); flex-shrink: 0; }
+.check.consent { margin: 4px 0 14px; font-size: 0.8rem; color: #555; }
+.check a, .modal-links a { color: var(--red); font-weight: 600; }
+.health-intro { font-size: 0.85rem; color: var(--gray-mid); margin-bottom: 12px; line-height: 1.55; }
+
+/* Small helpers inside dialogs */
+.link-btn { background: none; border: none; color: var(--red); font-weight: 600; cursor: pointer; font-size: 0.82rem; padding: 0; text-decoration: underline; font-family: 'Barlow', sans-serif; }
+.modal-links { text-align: center; margin-top: 14px; }
+.modal-ok { font-size: 0.85rem; color: #1d6b3a; margin-top: 10px; min-height: 18px; line-height: 1.5; }
+.btn-secondary { background: var(--black); }
+.btn-secondary:hover { background: #2a2a2a; }
+.btn-danger { background: #7a1010; }
+.btn-danger:hover { background: #9b1c1c; }
+.danger-zone { border-top: 1px solid var(--gray-light); margin-top: 22px; padding-top: 18px; }
+.danger-zone p { font-size: 0.84rem; color: #555; line-height: 1.55; margin-bottom: 14px; }
+.danger-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.05rem; text-transform: uppercase; color: #7a1010; margin-bottom: 6px; }
+
+/* Notes shown on the plan overview */
+.notes-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--red); margin: 4px 0 10px; }
+.note-card { border-radius: 10px; padding: 13px 16px; font-size: 0.88rem; line-height: 1.6; margin-bottom: 10px; border: 1px solid; }
+.note-info { background: #f4f8ff; border-color: #cfe0fa; color: #24457a; }
+.note-caution { background: #fff8f0; border-color: #f3d2a8; color: #7a4a12; }
+#ov-notes { margin-bottom: 26px; }
+
+/* "We can't build a plan" screen */
+.blocked-message p { margin-bottom: 14px; line-height: 1.7; font-size: 0.95rem; color: #333; }
+
+/* Footer links */
+footer a { color: inherit; text-decoration: underline; }
+
+/* Privacy / Terms pages */
+.legal { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+.legal h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 2.6rem; text-transform: uppercase; margin-bottom: 4px; }
+.legal h1 span { color: var(--red); }
+.legal h2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.25rem; text-transform: uppercase; margin: 30px 0 8px; color: var(--red); }
+.legal p, .legal li { font-size: 0.95rem; line-height: 1.75; color: #333; margin-bottom: 10px; }
+.legal ul { padding-left: 22px; margin-bottom: 10px; }
+.legal .updated { font-size: 0.82rem; color: var(--gray-mid); margin-bottom: 22px; }
+.legal a { color: var(--red); font-weight: 600; }
+.draft-note { background: #fff8e6; border: 1px solid #f0d58c; border-radius: 8px; padding: 14px 16px; font-size: 0.85rem; line-height: 1.6; color: #6b5200; margin-bottom: 26px; }
+.legal .ph { background: #fff1b8; padding: 0 4px; border-radius: 3px; font-weight: 600; }

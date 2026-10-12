@@ -1,13 +1,104 @@
 
 // ══════════════════════════════════════════════
 // AUTH — backed by real API routes + secure httpOnly cookie sessions
-// (no localStorage, no client-visible passwords)
+// (the session itself never touches JavaScript or localStorage)
 // ══════════════════════════════════════════════
 let currentUser = null;
 let genderVal = 'male';
-let enhancedVal = false;
 let loadingAnimInterval = null;
+let resetToken = null;
 
+// ══════════════════════════════════════════════
+// STATE — plan, progress and logs are saved on the server so they follow the
+// account across devices. A local cache keeps changes safe if the connection
+// drops, and is re-synced the next time the app loads.
+// ══════════════════════════════════════════════
+function defaultState() {
+  return { plan: null, goal: null, progress: { currentDayIndex: 0 }, logs: {}, updatedAt: 0 };
+}
+let appState = defaultState();
+let persistTimer = null;
+let retryTimer = null;
+let dirty = false;
+let retries = 0;
+
+const cacheKey = () => `holyfitness_cache_${currentUser ? currentUser.id : 'guest'}`;
+function writeCache() { try { localStorage.setItem(cacheKey(), JSON.stringify(appState)); } catch { /* storage full/blocked */ } }
+function readCache() { try { const r = localStorage.getItem(cacheKey()); return r ? JSON.parse(r) : null; } catch { return null; } }
+
+// Call after every change to plan/progress/logs.
+function touch() {
+  appState.updatedAt = Date.now();
+  writeCache();
+  persistState();
+}
+
+function persistState() {
+  dirty = true;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => flushState(), 400);
+}
+
+async function flushState(keepalive = false) {
+  clearTimeout(persistTimer);
+  if (!currentUser || !dirty) return true;
+  const sentAt = appState.updatedAt;
+  try {
+    const resp = await fetch('/api/state', {
+      method: 'PUT',
+      credentials: 'include',
+      keepalive,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: appState }),
+    });
+    if (!resp.ok) throw new Error('save failed ' + resp.status);
+    if (appState.updatedAt === sentAt) dirty = false; // nothing newer to send
+    retries = 0;
+    return true;
+  } catch {
+    if (retries < 5) {
+      retries++;
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => flushState(), 5000 * retries);
+    }
+    return false;
+  }
+}
+
+// Older versions kept everything in this browser only; pull that data into the account once.
+function migrateLegacyState() {
+  try {
+    const e = currentUser.email;
+    const saved = JSON.parse(localStorage.getItem(`holyfitness_plan_${e}`) || 'null');
+    if (!saved || !saved.plan) return null;
+    const progress = JSON.parse(localStorage.getItem(`holyfitness_progress_${e}`) || 'null') || { currentDayIndex: 0 };
+    const logs = JSON.parse(localStorage.getItem(`holyfitness_logs_${e}`) || '{}');
+    ['plan', 'progress', 'logs'].forEach(k => localStorage.removeItem(`holyfitness_${k}_${e}`));
+    return { plan: saved.plan, goal: saved.goal, progress, logs, updatedAt: Date.now() };
+  } catch { return null; }
+}
+
+async function loadState() {
+  let server = null;
+  try {
+    const resp = await fetch('/api/state', { credentials: 'include' });
+    if (resp.ok) server = (await resp.json()).state;
+  } catch { /* offline: fall back to the cache */ }
+  const cache = readCache();
+  let chosen = server;
+  // Changes saved locally but never uploaded win over an older server copy.
+  if (cache && (!server || (cache.updatedAt || 0) > (server.updatedAt || 0))) chosen = cache;
+  if (!chosen) chosen = migrateLegacyState();
+  appState = { ...defaultState(), ...(chosen || {}) };
+  if (chosen && chosen !== server) { writeCache(); persistState(); }
+}
+
+window.addEventListener('pagehide', () => { if (dirty) flushState(true); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && dirty) flushState(true); });
+
+// ══════════════════════════════════════════════
+// SAFETY NET — surface every error visibly, no silent failures.
+// ══════════════════════════════════════════════
 function showGenerateError(msg) {
   const errorBox = document.getElementById('generate-error');
   document.getElementById('loading-screen').classList.remove('show');
@@ -40,12 +131,16 @@ async function init() {
     const data = await resp.json();
     if (data.user) {
       currentUser = data.user;
+      await loadState();
       setLoggedIn();
       enterApp();
     }
   } catch {
+    // If the check fails (e.g. offline), just show the logged-out state.
   }
   restoreFormDraft();
+  const token = new URLSearchParams(window.location.search).get('reset');
+  if (token && /^[a-f0-9]{64}$/.test(token)) openResetFromLink(token);
 }
 
 function openModal() { document.getElementById('auth-modal').classList.add('open'); }
@@ -64,24 +159,28 @@ async function doSignup() {
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
+  const consent = document.getElementById('signup-consent').checked;
   const errorEl = document.getElementById('signup-error');
   errorEl.textContent = '';
 
   if (!name) { errorEl.textContent = 'Please enter your name.'; return; }
   if (!email || !email.includes('@')) { errorEl.textContent = 'Enter a valid email.'; return; }
-  if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (password.length < 8) { errorEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (!consent) { errorEl.textContent = 'Please accept the Terms and Privacy Policy to continue.'; return; }
 
   try {
     const resp = await fetch('/api/auth/signup', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, consent: true }),
     });
     const data = await resp.json();
     if (!resp.ok) { errorEl.textContent = data.error || 'Something went wrong. Please try again.'; return; }
 
     currentUser = data;
+    appState = defaultState();
+    await loadState();
     closeModal();
     setLoggedIn();
     enterApp();
@@ -107,6 +206,7 @@ async function doSignin() {
     if (!resp.ok) { errorEl.textContent = data.error || 'Something went wrong. Please try again.'; return; }
 
     currentUser = data;
+    await loadState();
     closeModal();
     setLoggedIn();
     enterApp();
@@ -116,15 +216,23 @@ async function doSignin() {
 }
 
 async function doLogout() {
+  const synced = await flushState();
   try {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   } catch {
+    // Even if the network call fails, still clear the local UI state below.
   }
+  // Remove the local copy once it is safely on the server (health data shouldn't linger on shared devices).
+  if (synced && currentUser) localStorage.removeItem(cacheKey());
+  showLoggedOutUI();
+}
+
+function showLoggedOutUI() {
   currentUser = null;
+  appState = defaultState();
+  dirty = false;
   localStorage.removeItem('holyfitness_form_draft');
-  document.getElementById('nav-user-label').style.display = 'none';
-  document.getElementById('nav-logout').style.display = 'none';
-  document.getElementById('nav-dashboard-link').style.display = 'none';
+  ['nav-user-label', 'nav-logout', 'nav-dashboard-link', 'nav-account'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('nav-cta').style.display = 'block';
   document.getElementById('nav-cta').textContent = 'Sign In';
   showPage('page-home');
@@ -138,6 +246,7 @@ function setLoggedIn() {
   document.getElementById('nav-cta').style.display = 'none';
   document.getElementById('nav-logout').style.display = 'inline';
   document.getElementById('nav-dashboard-link').style.display = 'inline';
+  document.getElementById('nav-account').style.display = 'inline';
   document.getElementById('dash-name').textContent = first;
 }
 
@@ -148,6 +257,11 @@ function handleGetStarted() {
 
 function goHome() { showPage('page-home'); }
 
+// enterApp() is the single entry point for "take me to where I belong":
+// called after login/signup and automatically on page load if already
+// logged in. If a plan already exists, land straight on the progress
+// dashboard (day, what's next, logging status). Otherwise, land on the
+// intake form to build a first plan.
 function enterApp() {
   if (!currentUser) { openModal(); return; }
   window.scrollTo(0, 0);
@@ -167,14 +281,20 @@ function showPage(id) {
   document.getElementById(id).classList.add('active');
 }
 
+// ══════════════════════════════════════════════
+// FORM DRAFT PERSISTENCE
+// Saves every intake field as you type/select, so your details survive a
+// failed generation, an accidental refresh, or coming back later — you
+// never have to retype everything to try again.
+// ══════════════════════════════════════════════
 const DRAFT_KEY = 'holyfitness_form_draft';
 const DRAFT_FIELD_IDS = [
   'f-age', 'f-height', 'f-weight', 'f-bf', 'f-freq', 'f-exp', 'f-sleep',
-  'f-stress', 'f-goal', 'f-diet', 'f-allergies', 'f-cycle', 'f-compound', 'f-cycleweek'
+  'f-stress', 'f-goal', 'f-diet', 'f-allergies', 'f-cycle'
 ];
 
 function saveFormDraft() {
-  const draft = { gender: genderVal, enhanced: enhancedVal, fields: {} };
+  const draft = { gender: genderVal, fields: {} };
   DRAFT_FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el) draft.fields[id] = el.value;
@@ -194,8 +314,8 @@ function restoreFormDraft() {
       });
     }
     if (draft.gender) setGender(draft.gender);
-    if (draft.enhanced) setEnhanced(true);
   } catch {
+    // Corrupt draft — ignore and start fresh.
   }
 }
 
@@ -209,6 +329,9 @@ function wireFormAutoSave() {
   });
 }
 
+// ══════════════════════════════════════════════
+// FORM TOGGLES
+// ══════════════════════════════════════════════
 function setGender(g) {
   genderVal = g;
   document.getElementById('btn-male').classList.toggle('active', g === 'male');
@@ -217,16 +340,9 @@ function setGender(g) {
   saveFormDraft();
 }
 
-function setEnhanced(e) {
-  enhancedVal = e;
-  document.getElementById('btn-natural').classList.toggle('active', !e);
-  document.getElementById('btn-enhanced').classList.toggle('active', e);
-  document.getElementById('compound-group').style.display = e ? 'flex' : 'none';
-  document.getElementById('cycle-week-group').style.display = e ? 'flex' : 'none';
-  document.getElementById('enhanced-disclosure').style.display = e ? 'block' : 'none';
-  saveFormDraft();
-}
-
+// ══════════════════════════════════════════════
+// PLAN TABS
+// ══════════════════════════════════════════════
 function switchPlanTab(tab) {
   document.querySelectorAll('.plan-tab').forEach((t, i) => {
     const tabs = ['overview','training','nutrition','sleep'];
@@ -237,6 +353,9 @@ function switchPlanTab(tab) {
   document.getElementById(panelMap[tab]).classList.add('active');
 }
 
+// ══════════════════════════════════════════════
+// LOADING ANIMATION
+// ══════════════════════════════════════════════
 function animateLoadingSteps() {
   const steps = ['ls-1','ls-2','ls-3','ls-4','ls-5','ls-6'];
   steps.forEach(id => document.getElementById(id).classList.remove('done'));
@@ -250,10 +369,47 @@ function animateLoadingSteps() {
       document.getElementById(steps[i]).classList.add('done');
       i++;
     } else {
+      // Loop: reset and cycle again so the UI keeps feeling alive on longer generations
       steps.forEach(id => document.getElementById(id).classList.remove('done'));
       i = 0;
     }
   }, 900);
+}
+
+// ══════════════════════════════════════════════
+// GENERATE PLAN — calls our own backend, which screens the health answers and
+// builds the plan with the built-in rule-based planner (no AI, no cost).
+// ══════════════════════════════════════════════
+// Health-check answers are sent with the request and used only to build the plan.
+function collectHealth() {
+  const g = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  const h = {
+    heart: g('h-heart'), chestPain: g('h-chest'), dizzy: g('h-dizzy'), diabetesMeds: g('h-diabetes'),
+    kidney: g('h-kidney'), eatingDisorder: g('h-ed'), bloodPressure: g('h-bp'), joints: g('h-joints'), otherCondition: g('h-other'),
+  };
+  if (genderVal === 'female') {
+    h.pregnant = g('h-pregnant');
+    h.pcos = g('h-pcos');
+    h.irregular = g('h-irregular');
+    h.perimenopause = g('h-peri');
+    h.symptoms = ['cramps', 'fatigue', 'bloating', 'mood', 'headaches'].filter(k => g('sym-' + k));
+  }
+  return h;
+}
+
+function showBlocked(data) {
+  document.getElementById('loading-screen').classList.remove('show');
+  document.getElementById('intake-card').style.display = 'none';
+  const box = document.getElementById('blocked-message');
+  box.innerHTML = String(data.message || '').split(/\n\n+/).map(p => `<p>${escapeAttr(p)}</p>`).join('');
+  document.getElementById('blocked-card').style.display = 'block';
+  document.getElementById('blocked-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function backToForm() {
+  document.getElementById('blocked-card').style.display = 'none';
+  document.getElementById('intake-card').style.display = 'block';
+  document.getElementById('intake-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function generatePlan() {
@@ -271,12 +427,12 @@ async function generatePlan() {
     diet: document.getElementById('f-diet').value,
     allerg: document.getElementById('f-allergies').value || 'none',
     cycle: genderVal === 'female' ? document.getElementById('f-cycle').value : 'N/A',
-    enhancedVal: enhancedVal,
-    compound: enhancedVal ? document.getElementById('f-compound').value : 'none',
-    cycleWeek: enhancedVal ? (document.getElementById('f-cycleweek').value || '4') : 'N/A',
+    health: collectHealth(),
   };
 
+  // Show loading
   document.getElementById('intake-card').style.display = 'none';
+  document.getElementById('blocked-card').style.display = 'none';
   document.getElementById('loading-screen').classList.add('show');
   document.getElementById('plan-output').classList.remove('show');
   animateLoadingSteps();
@@ -297,9 +453,13 @@ async function generatePlan() {
       throw new Error(data.error || `Request failed (status ${resp.status})`);
     }
 
+    // The health check found something a doctor needs to look at: no plan is made.
+    if (data.blocked) { showBlocked(data); return; }
+
     const plan = data.plan;
     const goal = data.goal || profile.goal;
 
+    // Save the plan to the account and start fresh progress/logs for this new week
     savePlan(plan, goal);
     saveProgress({ currentDayIndex: 0 });
     saveLogs({});
@@ -321,14 +481,28 @@ async function generatePlan() {
   }
 }
 
+// ══════════════════════════════════════════════
+// RENDER PLAN
+// ══════════════════════════════════════════════
+function renderNotes(notes) {
+  const el = document.getElementById('ov-notes');
+  if (!notes || !notes.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="notes-title">Notes for you</div>' +
+    notes.map(n => `<div class="note-card note-${n.level === 'caution' ? 'caution' : 'info'}">${escapeAttr(n.text)}</div>`).join('');
+}
+
 function renderPlan(plan, goal) {
   const ov = plan.overview;
   const days = plan.days;
 
+  // Header
   document.getElementById('ph-goal').textContent = goal.toUpperCase();
-  document.getElementById('ph-meta').textContent =
-    `${currentUser.name} · ${document.getElementById('f-weight').value}kg · ${document.getElementById('f-freq').value} training days/wk`;
+  const meta = plan.meta || {};
+  const weightText = meta.weightKg || document.getElementById('f-weight').value || '—';
+  const freqText = meta.freq || document.getElementById('f-freq').value || '—';
+  document.getElementById('ph-meta').textContent = `${currentUser.name} · ${weightText}kg · ${freqText} training days/wk`;
 
+  // Overview cards
   document.getElementById('ov-cards').innerHTML = [
     { label: 'Daily Calories', value: ov.dailyCalories.toLocaleString(), unit: 'kcal/day' },
     { label: 'Daily Protein', value: ov.dailyProtein + 'g', unit: 'per day' },
@@ -344,7 +518,9 @@ function renderPlan(plan, goal) {
   `).join('');
 
   document.getElementById('ov-summary').textContent = ov.summary;
+  renderNotes(plan.notes);
 
+  // Training days
   document.getElementById('training-days').innerHTML = days.map(d => {
     if (d.isRest) return `
       <div class="day-card">
@@ -379,6 +555,7 @@ function renderPlan(plan, goal) {
       </div>`;
   }).join('');
 
+  // Nutrition days
   document.getElementById('nutrition-days').innerHTML = days.map(d => {
     const mealRows = (d.nutrition.meals || []).map(m => `
       <div class="meal-row">
@@ -405,6 +582,7 @@ function renderPlan(plan, goal) {
       </div>`;
   }).join('');
 
+  // Sleep panel
   const sp = plan.sleepProtocol;
   const sleepDayRows = days.map(d => `
     <div class="sleep-row">
@@ -433,53 +611,34 @@ function renderPlan(plan, goal) {
 function resetPlan() {
   document.getElementById('plan-output').classList.remove('show');
   document.getElementById('loading-screen').classList.remove('show');
+  document.getElementById('blocked-card').style.display = 'none';
   document.getElementById('intake-card').style.display = 'block';
   document.getElementById('intake-card').scrollIntoView({ behavior: 'smooth' });
 }
 
-function storageKey(kind) {
-  const email = currentUser?.email || 'guest';
-  return `holyfitness_${kind}_${email}`;
-}
+// ══════════════════════════════════════════════
+// PLAN / PROGRESS / LOGS — held in appState, saved to the account by touch()
+// ══════════════════════════════════════════════
+function savePlan(plan, goal) { appState.plan = plan; appState.goal = goal; touch(); }
+function loadPlan() { return appState.plan ? { plan: appState.plan, goal: appState.goal } : null; }
+function clearPlan() { appState.plan = null; appState.goal = null; touch(); }
 
-function savePlan(plan, goal) {
-  localStorage.setItem(storageKey('plan'), JSON.stringify({ plan, goal, savedAt: new Date().toISOString() }));
-}
-function loadPlan() {
-  try {
-    const raw = localStorage.getItem(storageKey('plan'));
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-function clearPlan() { localStorage.removeItem(storageKey('plan')); }
+function saveProgress(progress) { appState.progress = progress; touch(); }
+function loadProgress() { return appState.progress || { currentDayIndex: 0 }; }
+function clearProgress() { appState.progress = { currentDayIndex: 0 }; touch(); }
 
-function saveProgress(progress) {
-  localStorage.setItem(storageKey('progress'), JSON.stringify(progress));
-}
-function loadProgress() {
-  try {
-    const raw = localStorage.getItem(storageKey('progress'));
-    return raw ? JSON.parse(raw) : { currentDayIndex: 0 };
-  } catch { return { currentDayIndex: 0 }; }
-}
-function clearProgress() { localStorage.removeItem(storageKey('progress')); }
-
-function saveLogs(logs) {
-  localStorage.setItem(storageKey('logs'), JSON.stringify(logs));
-}
-function loadLogs() {
-  try {
-    const raw = localStorage.getItem(storageKey('logs'));
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-function clearLogs() { localStorage.removeItem(storageKey('logs')); }
+function saveLogs(logs) { appState.logs = logs; touch(); }
+function loadLogs() { return appState.logs || {}; }
+function clearLogs() { appState.logs = {}; touch(); }
 
 function escapeAttr(str) {
   return String(str == null ? '' : str)
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ══════════════════════════════════════════════
+// PROGRESS DASHBOARD
+// ══════════════════════════════════════════════
 function renderProgressPage(plan, goal) {
   const progress = loadProgress();
   const logs = loadLogs();
@@ -488,6 +647,7 @@ function renderProgressPage(plan, goal) {
 
   document.getElementById('progress-name').textContent = currentUser.name.split(' ')[0].toUpperCase();
 
+  // Progress dots
   document.getElementById('progress-dots').innerHTML = plan.days.map((d, i) => {
     let cls = 'progress-dot';
     if (i < idx) cls += ' complete';
@@ -561,6 +721,9 @@ function startNewPlan() {
   resetPlan();
 }
 
+// ══════════════════════════════════════════════
+// LOGGERS — Workout / Meals / Sleep
+// ══════════════════════════════════════════════
 function closeLoggerModal(id) {
   document.getElementById(id).classList.remove('open');
 }
@@ -574,6 +737,7 @@ function currentDayContext() {
   return { saved, idx, day: saved.plan.days[idx] };
 }
 
+// -- Workout --
 function openWorkoutLogger() {
   const ctx = currentDayContext();
   if (!ctx) return;
@@ -615,6 +779,7 @@ function saveWorkoutLog() {
   renderProgressPage(saved.plan, saved.goal);
 }
 
+// -- Meals --
 let customMealDraft = [];
 
 function openMealLogger() {
@@ -642,7 +807,7 @@ function openMealLogger() {
 
 function renderCustomMealList() {
   document.getElementById('custom-meal-list').innerHTML = customMealDraft.map((m, i) =>
-    `<span class="custom-meal-chip">${m.name}${m.calories ? ' · ' + m.calories + 'kcal' : ''} <button type="button" onclick="removeCustomMeal(${i})">✕</button></span>`
+    `<span class="custom-meal-chip">${escapeAttr(m.name)}${m.calories ? ' · ' + m.calories + 'kcal' : ''} <button type="button" onclick="removeCustomMeal(${i})">✕</button></span>`
   ).join('');
 }
 
@@ -679,6 +844,7 @@ function saveMealLog() {
   renderProgressPage(saved.plan, saved.goal);
 }
 
+// -- Sleep --
 function openSleepLogger() {
   const ctx = currentDayContext();
   if (!ctx) return;
@@ -718,14 +884,144 @@ function saveSleepLog() {
   renderProgressPage(saved.plan, saved.goal);
 }
 
+// Close logger modals on overlay click (same pattern as the auth modal)
 ['workout-modal', 'meal-modal', 'sleep-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', function (e) {
     if (e.target === this) closeLoggerModal(id);
   });
 });
 
+// Close modal on overlay click
 document.getElementById('auth-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
+});
+
+
+// ══════════════════════════════════════════════
+// FORGOT / RESET PASSWORD
+// ══════════════════════════════════════════════
+function closeSimpleModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openForgot() {
+  closeModal();
+  document.getElementById('forgot-email').value = document.getElementById('signin-email').value || '';
+  document.getElementById('forgot-error').textContent = '';
+  document.getElementById('forgot-ok').textContent = '';
+  document.getElementById('forgot-modal').classList.add('open');
+}
+
+async function doForgot() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const errorEl = document.getElementById('forgot-error');
+  const okEl = document.getElementById('forgot-ok');
+  errorEl.textContent = '';
+  okEl.textContent = '';
+  if (!email || !email.includes('@')) { errorEl.textContent = 'Enter a valid email.'; return; }
+  try {
+    const resp = await fetch('/api/auth/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errorEl.textContent = data.error || 'Something went wrong. Please try again.'; return; }
+    okEl.textContent = data.message || 'If an account exists for that email, a reset link is on its way.';
+  } catch {
+    errorEl.textContent = 'Network error — please try again.';
+  }
+}
+
+function openResetFromLink(token) {
+  resetToken = token;
+  document.getElementById('reset-error').textContent = '';
+  document.getElementById('reset-ok').textContent = '';
+  document.getElementById('reset-password').value = '';
+  document.getElementById('reset-modal').classList.add('open');
+}
+
+async function doReset() {
+  const password = document.getElementById('reset-password').value;
+  const errorEl = document.getElementById('reset-error');
+  const okEl = document.getElementById('reset-ok');
+  errorEl.textContent = '';
+  okEl.textContent = '';
+  if (password.length < 8) { errorEl.textContent = 'Password must be at least 8 characters.'; return; }
+  try {
+    const resp = await fetch('/api/auth/reset', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errorEl.textContent = data.error || 'Something went wrong. Please try again.'; return; }
+    okEl.textContent = 'Password updated. You can sign in with it now.';
+    try { window.history.replaceState({}, '', window.location.pathname); } catch { /* ignore */ }
+    resetToken = null;
+    setTimeout(() => { closeSimpleModal('reset-modal'); openModal(); switchTab('signin'); }, 1500);
+  } catch {
+    errorEl.textContent = 'Network error — please try again.';
+  }
+}
+
+// ══════════════════════════════════════════════
+// ACCOUNT — download my data / delete my account
+// ══════════════════════════════════════════════
+function openAccount() {
+  if (!currentUser) return;
+  document.getElementById('account-sub').textContent = `Signed in as ${currentUser.email}`;
+  document.getElementById('delete-password').value = '';
+  document.getElementById('delete-error').textContent = '';
+  document.getElementById('account-modal').classList.add('open');
+}
+
+function downloadMyData() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    account: { name: currentUser.name, email: currentUser.email },
+    plan: appState.plan,
+    goal: appState.goal,
+    progress: appState.progress,
+    logs: appState.logs,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'holy-fitness-my-data.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function deleteMyAccount() {
+  const password = document.getElementById('delete-password').value;
+  const errorEl = document.getElementById('delete-error');
+  errorEl.textContent = '';
+  if (!password) { errorEl.textContent = 'Enter your password to confirm.'; return; }
+  try {
+    const resp = await fetch('/api/account/delete', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errorEl.textContent = data.error || 'Something went wrong. Please try again.'; return; }
+    if (currentUser) localStorage.removeItem(cacheKey());
+    closeSimpleModal('account-modal');
+    showLoggedOutUI();
+    alert('Your account and all your data have been deleted.');
+  } catch {
+    errorEl.textContent = 'Network error — please try again.';
+  }
+}
+
+['forgot-modal', 'reset-modal', 'account-modal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function (e) {
+    if (e.target === this) closeSimpleModal(id);
+  });
 });
 
 init();

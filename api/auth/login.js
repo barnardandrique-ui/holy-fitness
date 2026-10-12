@@ -1,7 +1,10 @@
 // api/auth/login.js
 import bcrypt from 'bcryptjs';
-import { getUserByEmail } from '../../lib/db.js';
+import { getUserByEmail, getCount, incrWithExpiry, clearKey } from '../../lib/db.js';
 import { createSessionCookie } from '../../lib/session.js';
+
+const MAX_FAILS = 8;          // wrong passwords allowed...
+const WINDOW_SECONDS = 15 * 60; // ...per 15 minutes, per email
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,22 +12,26 @@ export default async function handler(req, res) {
   }
 
   const { email, password } = req.body || {};
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!cleanEmail) return res.status(401).json({ error: 'Incorrect email or password.' });
+  const failKey = `loginfail:${cleanEmail}`;
+
   let user;
   try {
-    user = email ? await getUserByEmail(email) : null;
+    if ((await getCount(failKey)) >= MAX_FAILS) {
+      return res.status(429).json({ error: 'Too many attempts. Please wait 15 minutes, or reset your password.' });
+    }
+    user = await getUserByEmail(cleanEmail);
+    const ok = user ? await bcrypt.compare(String(password || ''), user.passwordHash) : false;
+    if (!ok) {
+      await incrWithExpiry(failKey, WINDOW_SECONDS);
+      // Same message for "no such user" and "wrong password" — don't leak which one.
+      return res.status(401).json({ error: 'Incorrect email or password.' });
+    }
+    await clearKey(failKey);
   } catch (err) {
-    console.error('login getUserByEmail failed:', err);
+    console.error('login failed:', err);
     return res.status(500).json({ error: 'Something went wrong logging in. Please try again.' });
-  }
-
-  // Same error for "no such user" and "wrong password" — don't leak which one.
-  if (!user) {
-    return res.status(401).json({ error: 'Incorrect email or password.' });
-  }
-
-  const ok = await bcrypt.compare(String(password || ''), user.passwordHash);
-  if (!ok) {
-    return res.status(401).json({ error: 'Incorrect email or password.' });
   }
 
   res.setHeader('Set-Cookie', createSessionCookie(user));

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Holy Fitness ✝️ — Train With Intent</title>
 <link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/extra.css" />
 </head>
 <body>
 <!-- ════════════════════════════════ AUTH MODAL ════════════════════════════════ -->
@@ -34,8 +35,9 @@
       </div>
       <div class="form-field">
         <label>Password</label>
-        <input type="password" id="signup-password" placeholder="Min. 6 characters" />
+        <input type="password" id="signup-password" placeholder="Min. 8 characters" />
       </div>
+      <label class="check consent"><input type="checkbox" id="signup-consent" /><span>I agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>, including how my health information is used to build my plan.</span></label>
       <button class="btn-modal-submit" onclick="doSignup()">Create Account →</button>
       <div class="modal-error" id="signup-error"></div>
     </div>
@@ -51,6 +53,48 @@
       </div>
       <button class="btn-modal-submit" onclick="doSignin()">Sign In →</button>
       <div class="modal-error" id="signin-error"></div>
+      <div class="modal-links"><button class="link-btn" type="button" onclick="openForgot()">Forgot your password?</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ FORGOT / RESET / ACCOUNT MODALS ════════════════════════════════ -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSimpleModal('forgot-modal')">✕</button>
+    <div class="modal-headline">RESET <span>PASSWORD</span></div>
+    <p class="modal-sub">Enter your email and we'll send you a link to choose a new password.</p>
+    <div class="form-field"><label>Email</label><input type="text" id="forgot-email" placeholder="you@email.com" /></div>
+    <button class="btn-modal-submit" onclick="doForgot()">Send Reset Link →</button>
+    <div class="modal-error" id="forgot-error"></div>
+    <div class="modal-ok" id="forgot-ok"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSimpleModal('reset-modal')">✕</button>
+    <div class="modal-headline">NEW <span>PASSWORD</span></div>
+    <p class="modal-sub">Choose a new password for your account.</p>
+    <div class="form-field"><label>New Password</label><input type="password" id="reset-password" placeholder="Min. 8 characters" /></div>
+    <button class="btn-modal-submit" onclick="doReset()">Save New Password →</button>
+    <div class="modal-error" id="reset-error"></div>
+    <div class="modal-ok" id="reset-ok"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="account-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSimpleModal('account-modal')">✕</button>
+    <div class="modal-headline">MY <span>ACCOUNT</span></div>
+    <p class="modal-sub" id="account-sub"></p>
+    <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
+    <div class="danger-zone">
+      <div class="danger-title">Delete my account</div>
+      <p>This permanently deletes your account, plan, progress and logs. It cannot be undone.</p>
+      <div class="form-field"><label>Confirm with your password</label><input type="password" id="delete-password" /></div>
+      <button class="btn-modal-submit btn-danger" onclick="deleteMyAccount()">Delete everything</button>
+      <div class="modal-error" id="delete-error"></div>
     </div>
   </div>
 </div>
@@ -63,6 +107,7 @@
   </div>
   <div class="nav-right">
     <button class="btn-nav-ghost" id="nav-dashboard-link" style="display:none;" onclick="enterApp()">Dashboard</button>
+    <button class="btn-nav-ghost" id="nav-account" style="display:none;" onclick="openAccount()">Account</button>
     <span class="nav-user" id="nav-user-label" style="display:none;"></span>
     <button class="btn-nav" id="nav-cta" onclick="openModal()">Sign In</button>
     <button class="btn-nav-ghost" id="nav-logout" style="display:none;" onclick="doLogout()">Log Out</button>
@@ -109,7 +154,7 @@
     <div class="steps">
       <div class="step"><div class="step-num">01</div><div class="step-content"><h3>Create Your Account</h3><p>Sign up in seconds. Your profile secures your data and personalised plans.</p></div></div>
       <div class="step"><div class="step-num">02</div><div class="step-content"><h3>Enter Your Stats</h3><p>Gender, height, weight, body fat, age, training experience and lifestyle — all factored in.</p></div></div>
-      <div class="step"><div class="step-num">03</div><div class="step-content"><h3>Set Your Goal</h3><p>Fat loss, muscle gain, recomposition, strength or performance. Optional cycle and enhanced details.</p></div></div>
+      <div class="step"><div class="step-num">03</div><div class="step-content"><h3>Set Your Goal</h3><p>Fat loss, muscle gain, recomposition, strength or performance. A quick health check keeps it safe, with optional cycle details.</p></div></div>
       <div class="step"><div class="step-num">04</div><div class="step-content"><h3>We Build Your Plan</h3><p>Your lean mass, calories and macros are calculated, then a unique 7-day roadmap is built: training split, full meals, and sleep protocol.</p></div></div>
       <div class="step"><div class="step-num">05</div><div class="step-content"><h3>Execute & Regenerate</h3><p>Follow your weekly plan, then regenerate for next week with progressive adjustments built in.</p></div></div>
     </div>
@@ -121,7 +166,7 @@
     <button class="btn-white" onclick="openModal()">Join Holy Fitness Free</button>
   </section>
 
-  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised Fitness Programs &nbsp;·&nbsp; All rights reserved.</footer>
+  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised Fitness Programs &nbsp;·&nbsp; <a href="/privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="/terms.html">Terms</a></footer>
 </div>
 
 <!-- ════════════════════════════════ PAGE: PROGRESS DASHBOARD ════════════════════════════════ -->
@@ -321,34 +366,49 @@
           <select id="f-cycle"><option value="follicular">Follicular (Day 1–14) — High Energy</option><option value="ovulation">Ovulation — Peak Performance</option><option value="luteal">Luteal (Day 15–28) — Recovery Focus</option><option value="menstrual">Menstrual — Active Rest</option><option value="not tracking">Not Tracking</option></select>
         </div>
         <div class="disclosure-box">Cycle phase adjusts your weekly training intensity and nutrition targets. Optional — kept private.</div>
+        <div class="section-divider-form" style="margin-top:22px;">Women's Health</div>
+        <p class="health-intro">Tick anything that applies right now so your plan can adjust.</p>
+        <div class="check-list">
+          <label class="check"><input type="checkbox" id="h-pregnant" /><span>I'm pregnant, or I gave birth in the last 6 months</span></label>
+          <label class="check"><input type="checkbox" id="sym-cramps" /><span>Period cramps</span></label>
+          <label class="check"><input type="checkbox" id="sym-fatigue" /><span>Fatigue or low energy</span></label>
+          <label class="check"><input type="checkbox" id="sym-bloating" /><span>Bloating or water retention</span></label>
+          <label class="check"><input type="checkbox" id="sym-mood" /><span>Mood changes or cravings</span></label>
+          <label class="check"><input type="checkbox" id="sym-headaches" /><span>Headaches</span></label>
+          <label class="check"><input type="checkbox" id="h-pcos" /><span>PCOS</span></label>
+          <label class="check"><input type="checkbox" id="h-irregular" /><span>Irregular or missing periods</span></label>
+          <label class="check"><input type="checkbox" id="h-peri" /><span>Perimenopause or menopause</span></label>
+        </div>
       </div>
 
-      <!-- Enhanced -->
-      <div class="section-divider-form">Enhanced Use (Optional)</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Currently On Cycle?</label>
-          <div class="toggle-group">
-            <button class="active" id="btn-natural" onclick="setEnhanced(false)">Natural</button>
-            <button id="btn-enhanced" onclick="setEnhanced(true)">On Cycle</button>
-          </div>
-        </div>
-        <div class="form-group" id="compound-group" style="display:none;">
-          <label>Compound</label>
-          <select id="f-compound"><option value="Testosterone (base)">Testosterone (Base)</option><option value="Testosterone + Deca">Test + Deca</option><option value="Testosterone + Tren">Test + Tren</option><option value="Anavar (Var)">Anavar / Var</option><option value="Winstrol">Winstrol</option><option value="Peptides / HGH">Peptides / HGH</option></select>
-        </div>
-        <div class="form-group" id="cycle-week-group" style="display:none;">
-          <label>Week of Cycle</label>
-          <input type="number" id="f-cycleweek" placeholder="4" min="1" max="20" />
-        </div>
+      <!-- Health check -->
+      <div class="section-divider-form">Health Check</div>
+      <p class="health-intro">Please tick anything that applies to you. This keeps your plan safe. Your answers are used only to build your plan.</p>
+      <div class="check-list">
+        <label class="check"><input type="checkbox" id="h-heart" /><span>A heart condition, or a doctor has told me to exercise only under supervision</span></label>
+        <label class="check"><input type="checkbox" id="h-chest" /><span>Chest pain when I exercise or at rest</span></label>
+        <label class="check"><input type="checkbox" id="h-dizzy" /><span>Dizziness, fainting or loss of balance</span></label>
+        <label class="check"><input type="checkbox" id="h-diabetes" /><span>Diabetes treated with insulin or medication</span></label>
+        <label class="check"><input type="checkbox" id="h-kidney" /><span>Kidney disease</span></label>
+        <label class="check"><input type="checkbox" id="h-ed" /><span>A current or past eating disorder</span></label>
+        <label class="check"><input type="checkbox" id="h-bp" /><span>High blood pressure</span></label>
+        <label class="check"><input type="checkbox" id="h-joints" /><span>Joint, bone or back problems</span></label>
+        <label class="check"><input type="checkbox" id="h-other" /><span>Another health condition or regular medication (for example thyroid, asthma or epilepsy)</span></label>
       </div>
-      <div id="enhanced-disclosure" style="display:none;" class="disclosure-box">Enhanced projections assume responsible use under professional supervision. For planning purposes only — not medical advice.</div>
 
       <div class="disclosure-box" id="generate-error" style="display:none; margin-top:16px; margin-bottom:0;"></div>
 
       <button class="btn-generate" id="generate-btn" onclick="generatePlan()">
         <span>⚡</span> GENERATE MY 7-DAY PLAN
       </button>
+    </div>
+
+    <!-- BLOCKED (health screening) -->
+    <div class="intake-card" id="blocked-card" style="display:none;">
+      <div class="intake-title">LET'S <span>PAUSE</span> HERE</div>
+      <div class="intake-subtitle">We can't safely build a plan from your answers.</div>
+      <div id="blocked-message" class="blocked-message"></div>
+      <button class="btn-generate" onclick="backToForm()">Update my answers</button>
     </div>
 
     <!-- LOADING -->
@@ -390,6 +450,7 @@
         <!-- Overview -->
         <div class="plan-panel active" id="panel-overview">
           <div class="overview-grid" id="ov-cards"></div>
+          <div id="ov-notes"></div>
           <div class="ai-prose" id="ov-summary"></div>
         </div>
         <!-- Training -->

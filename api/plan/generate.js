@@ -1,6 +1,7 @@
 // api/plan/generate.js
 // Builds a plan with the built-in rule-based planner (lib/planner).
-// No AI call, no API key, no per-plan cost — and it responds in milliseconds.
+// No AI call and no per-plan cost. The planner screens the health answers first;
+// if a condition needs a doctor, it returns { blocked: true, ... } instead of a plan.
 import { getSessionFromRequest } from '../../lib/session.js';
 import { generatePlan } from '../../lib/planner/engine.js';
 
@@ -16,8 +17,11 @@ export default async function handler(req, res) {
 
   try {
     const profile = { ...(req.body || {}), name: session.name };
-    const plan = generatePlan(profile);
-    return res.status(200).json({ plan, goal: plan.meta.goal });
+    const result = generatePlan(profile);
+    if (result.blocked) {
+      return res.status(200).json({ blocked: true, reasons: result.reasons, eatingDisorder: !!result.eatingDisorder, message: result.message });
+    }
+    return res.status(200).json({ plan: result, goal: result.meta.goal });
   } catch (err) {
     console.error('plan generation failed:', err);
     return res.status(400).json({
