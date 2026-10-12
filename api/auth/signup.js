@@ -26,11 +26,21 @@ export default async function handler(req, res) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await createUser({
-    name: String(name).trim(),
-    email: String(email).trim(),
-    passwordHash,
-  });
+
+  let user;
+  try {
+    user = await createUser({
+      name: String(name).trim(),
+      email: String(email).trim(),
+      passwordHash,
+    });
+  } catch (err) {
+    if (err.message === 'EMAIL_TAKEN') {
+      return res.status(409).json({ error: 'An account with that email already exists.' });
+    }
+    console.error('signup createUser failed:', err);
+    return res.status(500).json({ error: 'Something went wrong creating your account. Please try again.' });
+  }
 
   res.setHeader('Set-Cookie', createSessionCookie(user));
   return res.status(200).json({ id: user.id, name: user.name, email: user.email });

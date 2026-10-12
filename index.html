@@ -16,7 +16,7 @@
       Holy Fitness ✝️
     </div>
     <div class="modal-headline">JOIN <span>Holy Fitness ✝️</span></div>
-    <p class="modal-sub">Create your account to access AI-powered training plans.</p>
+    <p class="modal-sub">Create your account to get your personalised training plan.</p>
 
     <div class="modal-tabs">
       <button class="modal-tab active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
@@ -75,7 +75,7 @@
   <section class="hero">
     <p class="hero-eyebrow">Fitness Programs &nbsp;·&nbsp; Men &amp; Women</p>
     <h1>TRAIN WITH<br><span>INTENT.</span></h1>
-    <p>AI-generated 7-day programs with personalised nutrition, training splits and sleep protocols — built uniquely for your body and your goal.</p>
+    <p>Personalised 7-day programs with nutrition, training splits and sleep protocols — calculated from your body composition and your goal.</p>
     <div class="hero-buttons">
       <button class="btn-primary" onclick="handleGetStarted()">Get Started</button>
       <button class="btn-outline" onclick="document.getElementById('home-programs').scrollIntoView({behavior:'smooth'})">View Programs</button>
@@ -83,16 +83,16 @@
   </section>
 
   <div class="stats-bar">
-    <div class="stat-item"><div class="stat-number">2,400+</div><div class="stat-label">Active Members</div></div>
-    <div class="stat-item"><div class="stat-number">8</div><div class="stat-label">Program Tracks</div></div>
-    <div class="stat-item"><div class="stat-number">94%</div><div class="stat-label">Goal Hit Rate</div></div>
-    <div class="stat-item"><div class="stat-number">7-Day</div><div class="stat-label">AI Plans</div></div>
+    <div class="stat-item"><div class="stat-number">5</div><div class="stat-label">Training Goals</div></div>
+    <div class="stat-item"><div class="stat-number">6</div><div class="stat-label">Diet Styles</div></div>
+    <div class="stat-item"><div class="stat-number">2-6</div><div class="stat-label">Training Days / Week</div></div>
+    <div class="stat-item"><div class="stat-number">7-Day</div><div class="stat-label">Custom Plans</div></div>
   </div>
 
   <section class="section-dark" id="home-programs">
     <p class="section-label" style="color:rgba(255,255,255,0.45)">What We Offer</p>
     <h2 class="section-heading">Choose Your<br><span style="color:var(--red-bright)">Track</span></h2>
-    <p class="section-sub">Every plan is AI-generated and unique to you — your body stats, goal, diet, and lifestyle all shape the output.</p>
+    <p class="section-sub">Every plan is calculated from your own numbers — your body composition, goal, diet, and lifestyle all shape the output.</p>
     <div class="programs-grid">
       <div class="program-card"><span class="program-tag">Women · Lean</span><div class="program-name">Sculpt & Define</div><div class="program-desc">Low-volume, high-frequency resistance training tuned for body composition and hormonal cycles.</div></div>
       <div class="program-card"><span class="program-tag">Women · Build</span><div class="program-name">Strength Recomp</div><div class="program-desc">Progressive overload with strategic deload weeks. Built for women ready to build serious muscle.</div></div>
@@ -110,18 +110,18 @@
       <div class="step"><div class="step-num">01</div><div class="step-content"><h3>Create Your Account</h3><p>Sign up in seconds. Your profile secures your data and personalised plans.</p></div></div>
       <div class="step"><div class="step-num">02</div><div class="step-content"><h3>Enter Your Stats</h3><p>Gender, height, weight, body fat, age, training experience and lifestyle — all factored in.</p></div></div>
       <div class="step"><div class="step-num">03</div><div class="step-content"><h3>Set Your Goal</h3><p>Fat loss, muscle gain, recomposition, strength or performance. Optional cycle and enhanced details.</p></div></div>
-      <div class="step"><div class="step-num">04</div><div class="step-content"><h3>AI Builds Your Plan</h3><p>Our AI generates a unique 7-day roadmap: training splits, full nutrition with meals, and sleep protocols.</p></div></div>
+      <div class="step"><div class="step-num">04</div><div class="step-content"><h3>We Build Your Plan</h3><p>Your lean mass, calories and macros are calculated, then a unique 7-day roadmap is built: training split, full meals, and sleep protocol.</p></div></div>
       <div class="step"><div class="step-num">05</div><div class="step-content"><h3>Execute & Regenerate</h3><p>Follow your weekly plan, then regenerate for next week with progressive adjustments built in.</p></div></div>
     </div>
   </section>
 
   <section class="cta-section">
     <h2>Ready To Start<br>Forging?</h2>
-    <p>Sign up free — get your first AI-generated 7-day plan in under a minute.</p>
+    <p>Sign up free — get your first personalised 7-day plan in seconds.</p>
     <button class="btn-white" onclick="openModal()">Join Holy Fitness Free</button>
   </section>
 
-  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised AI Fitness Programs &nbsp;·&nbsp; All rights reserved.</footer>
+  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised Fitness Programs &nbsp;·&nbsp; All rights reserved.</footer>
 </div>
 
 <!-- ════════════════════════════════ PAGE: PROGRESS DASHBOARD ════════════════════════════════ -->
@@ -246,7 +246,7 @@
 <div class="page" id="page-dashboard">
   <div class="dashboard-hero">
     <div class="dashboard-welcome">WELCOME BACK, <span id="dash-name">ATHLETE</span></div>
-    <div class="dashboard-sub">Fill in your details and let the AI build your personalised 7-day plan.</div>
+    <div class="dashboard-sub">Fill in your details and and we'll build your personalised 7-day plan.</div>
   </div>
 
   <div class="intake-section">
@@ -347,7 +347,7 @@
       <div class="disclosure-box" id="generate-error" style="display:none; margin-top:16px; margin-bottom:0;"></div>
 
       <button class="btn-generate" id="generate-btn" onclick="generatePlan()">
-        <span>⚡</span> GENERATE MY 7-DAY AI PLAN
+        <span>⚡</span> GENERATE MY 7-DAY PLAN
       </button>
     </div>
 
@@ -355,7 +355,7 @@
     <div class="loading-screen" id="loading-screen">
       <div class="forge-spinner"></div>
       <div class="loading-title">BUILDING YOUR <span>PLAN</span></div>
-      <p style="font-size:0.88rem;color:var(--gray-mid);margin-bottom:20px;">Our AI is crafting a unique 7-day program just for you.</p>
+      <p style="font-size:0.88rem;color:var(--gray-mid);margin-bottom:20px;">We're calculating your targets and building your 7-day program.</p>
       <ul class="loading-steps-list" id="loading-steps">
         <li id="ls-1">Analysing your body stats &amp; goal</li>
         <li id="ls-2">Calculating calorie &amp; macro targets</li>

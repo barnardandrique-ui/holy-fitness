@@ -9,8 +9,15 @@ export default async function handler(req, res) {
   }
 
   const { email, password } = req.body || {};
-  const user = email ? await getUserByEmail(email) : null;
+  let user;
+  try {
+    user = email ? await getUserByEmail(email) : null;
+  } catch (err) {
+    console.error('login getUserByEmail failed:', err);
+    return res.status(500).json({ error: 'Something went wrong logging in. Please try again.' });
+  }
 
+  // Same error for "no such user" and "wrong password" — don't leak which one.
   if (!user) {
     return res.status(401).json({ error: 'Incorrect email or password.' });
   }
