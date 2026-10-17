@@ -16,6 +16,7 @@ for (const k of ['heart', 'chestPain', 'dizzy', 'diabetesMeds', 'kidney', 'pregn
   const r = generatePlan({ ...base, health: { [k]: true } });
   check(`"${k}" blocks the plan and returns no plan data`, r.blocked === true && !r.days && !r.overview);
 }
+check('eating-disorder message points to South African support', /sadag\.org/.test(generatePlan({ ...base, health: { eatingDisorder: true } }).message));
 check('eating-disorder message has no numbers', !/\d/.test(generatePlan({ ...base, health: { eatingDisorder: true } }).message.replace('allianceforeatingdisorders.com', '')));
 
 const joints = generatePlan({ ...base, goal: 'athletic performance', health: { joints: true } });

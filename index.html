@@ -3,20 +3,31 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Holy Fitness ✝️ — Train With Intent</title>
+<title>Holy Fitness — Train with intent</title>
+<meta name="description" content="Personalised 7-day training, nutrition and sleep plans calculated from your body composition. Built around a health check, so it's safe by design." />
+<meta name="theme-color" content="#0B0B0B" />
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Holy Fitness — Train with intent" />
+<meta property="og:description" content="Personalised 7-day training, nutrition and sleep plans calculated from your body composition." />
+<meta property="og:image" content="https://holy-fitness-rho.vercel.app/assets/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,600;0,700;0,900;1,700&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/css/styles.css" />
 <link rel="stylesheet" href="/css/extra.css" />
+<link rel="stylesheet" href="/css/brand.css" />
 </head>
 <body>
 <!-- ════════════════════════════════ AUTH MODAL ════════════════════════════════ -->
 <div class="modal-overlay" id="auth-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-logo">
-      <svg viewBox="0 0 28 28" fill="none"><path d="M12 2H16V10H24V16H16V26H12V16H4V10H12V2Z" fill="#9B1C1C"/></svg>
-      Holy Fitness ✝️
-    </div>
-    <div class="modal-headline">JOIN <span>Holy Fitness ✝️</span></div>
+    <div class="modal-logo"><img class="logo-mark" src="/assets/logo.svg" alt="" width="22" height="33" /><span class="logo-word">Holy Fitness</span></div>
+    <div class="modal-headline">Join <span>Holy Fitness</span></div>
     <p class="modal-sub">Create your account to get your personalised training plan.</p>
 
     <div class="modal-tabs">
@@ -37,7 +48,7 @@
         <label>Password</label>
         <input type="password" id="signup-password" placeholder="Min. 8 characters" />
       </div>
-      <label class="check consent"><input type="checkbox" id="signup-consent" /><span>I agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>, including how my health information is used to build my plan.</span></label>
+      <label class="check consent"><input type="checkbox" id="signup-consent" /><span>I am 18 or older, and I agree to the <a href="/terms.html" target="_blank">Terms</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>, including how my health information is used to build my plan.</span></label>
       <button class="btn-modal-submit" onclick="doSignup()">Create Account →</button>
       <div class="modal-error" id="signup-error"></div>
     </div>
@@ -62,7 +73,7 @@
 <div class="modal-overlay" id="forgot-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeSimpleModal('forgot-modal')">✕</button>
-    <div class="modal-headline">RESET <span>PASSWORD</span></div>
+    <div class="modal-headline">Reset <span>password</span></div>
     <p class="modal-sub">Enter your email and we'll send you a link to choose a new password.</p>
     <div class="form-field"><label>Email</label><input type="text" id="forgot-email" placeholder="you@email.com" /></div>
     <button class="btn-modal-submit" onclick="doForgot()">Send Reset Link →</button>
@@ -74,7 +85,7 @@
 <div class="modal-overlay" id="reset-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeSimpleModal('reset-modal')">✕</button>
-    <div class="modal-headline">NEW <span>PASSWORD</span></div>
+    <div class="modal-headline">New <span>password</span></div>
     <p class="modal-sub">Choose a new password for your account.</p>
     <div class="form-field"><label>New Password</label><input type="password" id="reset-password" placeholder="Min. 8 characters" /></div>
     <button class="btn-modal-submit" onclick="doReset()">Save New Password →</button>
@@ -86,7 +97,7 @@
 <div class="modal-overlay" id="account-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeSimpleModal('account-modal')">✕</button>
-    <div class="modal-headline">MY <span>ACCOUNT</span></div>
+    <div class="modal-headline">My <span>account</span></div>
     <p class="modal-sub" id="account-sub"></p>
     <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
     <div class="danger-zone">
@@ -101,10 +112,7 @@
 
 <!-- ════════════════════════════════ NAV ════════════════════════════════ -->
 <nav>
-  <div class="logo" onclick="goHome()">
-    <svg viewBox="0 0 28 28" fill="none"><path d="M12 2H16V10H24V16H16V26H12V16H4V10H12V2Z" fill="#9B1C1C"/></svg>
-    Holy Fitness ✝️
-  </div>
+  <a class="logo" href="/" onclick="goHome(); return false;" aria-label="Holy Fitness home"><img class="logo-mark" src="/assets/logo.svg" alt="" width="28" height="42" /><span class="logo-word">Holy Fitness</span></a>
   <div class="nav-right">
     <button class="btn-nav-ghost" id="nav-dashboard-link" style="display:none;" onclick="enterApp()">Dashboard</button>
     <button class="btn-nav-ghost" id="nav-account" style="display:none;" onclick="openAccount()">Account</button>
@@ -117,14 +125,22 @@
 <!-- ════════════════════════════════ PAGE: HOME ════════════════════════════════ -->
 <div class="page active" id="page-home">
 
-  <section class="hero">
-    <p class="hero-eyebrow">Fitness Programs &nbsp;·&nbsp; Men &amp; Women</p>
-    <h1>TRAIN WITH<br><span>INTENT.</span></h1>
-    <p>Personalised 7-day programs with nutrition, training splits and sleep protocols — calculated from your body composition and your goal.</p>
-    <div class="hero-buttons">
-      <button class="btn-primary" onclick="handleGetStarted()">Get Started</button>
-      <button class="btn-outline" onclick="document.getElementById('home-programs').scrollIntoView({behavior:'smooth'})">View Programs</button>
+  <section class="hero hero-split">
+    <div class="hero-copy">
+      <p class="hero-eyebrow">Training · Nutrition · Recovery</p>
+      <h1>Train with <em>intent.</em></h1>
+      <p class="hero-lede">Personalised 7-day programs with nutrition, training splits and sleep protocols, calculated from your body composition and your goal.</p>
+      <div class="hero-buttons">
+        <button class="btn-primary" onclick="handleGetStarted()">Get Started</button>
+        <button class="btn-outline" onclick="document.getElementById('home-programs').scrollIntoView({behavior:'smooth'})">View Programs</button>
+      </div>
+      <ul class="hero-points">
+        <li>Built from your lean mass, not a generic template</li>
+        <li>A health check first, so it's safe by design</li>
+        <li>Free to use, and your plan follows you across devices</li>
+      </ul>
     </div>
+    <div class="hero-mark"><img src="/assets/logo.svg" alt="Holy Fitness logo: an H and F monogram with a golden halo" width="499" height="758" /></div>
   </section>
 
   <div class="stats-bar">
@@ -135,8 +151,8 @@
   </div>
 
   <section class="section-dark" id="home-programs">
-    <p class="section-label" style="color:rgba(255,255,255,0.45)">What We Offer</p>
-    <h2 class="section-heading">Choose Your<br><span style="color:var(--red-bright)">Track</span></h2>
+    <p class="section-label">What we offer</p>
+    <h2 class="section-heading">Choose your <em>track.</em></h2>
     <p class="section-sub">Every plan is calculated from your own numbers — your body composition, goal, diet, and lifestyle all shape the output.</p>
     <div class="programs-grid">
       <div class="program-card"><span class="program-tag">Women · Lean</span><div class="program-name">Sculpt & Define</div><div class="program-desc">Low-volume, high-frequency resistance training tuned for body composition and hormonal cycles.</div></div>
@@ -149,8 +165,8 @@
   </section>
 
   <section class="section-red">
-    <p class="section-label">The Process</p>
-    <h2 class="section-heading">How Holy Fitness Works</h2>
+    <p class="section-label">The process</p>
+    <h2 class="section-heading">How Holy Fitness <em>works.</em></h2>
     <div class="steps">
       <div class="step"><div class="step-num">01</div><div class="step-content"><h3>Create Your Account</h3><p>Sign up in seconds. Your profile secures your data and personalised plans.</p></div></div>
       <div class="step"><div class="step-num">02</div><div class="step-content"><h3>Enter Your Stats</h3><p>Gender, height, weight, body fat, age, training experience and lifestyle — all factored in.</p></div></div>
@@ -161,18 +177,25 @@
   </section>
 
   <section class="cta-section">
-    <h2>Ready To Start<br>Forging?</h2>
+    <h2>Ready to train<br>with <em>intent?</em></h2>
     <p>Sign up free — get your first personalised 7-day plan in seconds.</p>
     <button class="btn-white" onclick="openModal()">Join Holy Fitness Free</button>
   </section>
 
-  <footer>&copy; 2025 <span>Holy Fitness ✝️</span> &nbsp;·&nbsp; Personalised Fitness Programs &nbsp;·&nbsp; <a href="/privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="/terms.html">Terms</a></footer>
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <img class="footer-mark" src="/assets/logo-reversed.svg" alt="" width="37" height="56" />
+      <div><div class="footer-word">Holy Fitness</div><div class="footer-tag">Train with intent.</div></div>
+    </div>
+    <div class="footer-links"><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div>
+    <div class="footer-copy">&copy; <span id="footer-year">2026</span> Holy Fitness. General guidance, not medical advice.</div>
+  </footer>
 </div>
 
 <!-- ════════════════════════════════ PAGE: PROGRESS DASHBOARD ════════════════════════════════ -->
 <div class="page" id="page-progress">
   <div class="dashboard-hero">
-    <div class="dashboard-welcome">WELCOME BACK, <span id="progress-name">ATHLETE</span></div>
+    <div class="dashboard-welcome">Welcome back, <span id="progress-name">Athlete</span></div>
     <div class="dashboard-sub" id="progress-sub">Here's where you left off.</div>
   </div>
 
@@ -196,17 +219,17 @@
 
       <div class="log-tiles">
         <button class="log-tile" onclick="openWorkoutLogger()">
-          <div class="log-tile-icon">🏋️</div>
+          <div class="log-tile-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg></div>
           <div class="log-tile-title">Log Workout</div>
           <div class="log-tile-status" id="status-workout">Not logged yet</div>
         </button>
         <button class="log-tile" onclick="openMealLogger()">
-          <div class="log-tile-icon">🍽️</div>
+          <div class="log-tile-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg></div>
           <div class="log-tile-title">Log Meals</div>
           <div class="log-tile-status" id="status-meals">Not logged yet</div>
         </button>
         <button class="log-tile" onclick="openSleepLogger()">
-          <div class="log-tile-icon">🌙</div>
+          <div class="log-tile-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></div>
           <div class="log-tile-title">Log Sleep</div>
           <div class="log-tile-status" id="status-sleep">Not logged yet</div>
         </button>
@@ -219,8 +242,8 @@
 
     <!-- Week complete state -->
     <div class="today-card" id="today-card-complete" style="display:none; text-align:center;">
-      <div style="font-size:2.4rem; margin-bottom:6px;">🎉</div>
-      <div class="intake-title" style="margin-bottom:8px;">WEEK <span>COMPLETE</span></div>
+      <img src="/assets/logo.svg" alt="" height="76" style="margin-bottom:14px;" />
+      <div class="intake-title" style="margin-bottom:8px;">Week <span>complete</span></div>
       <p style="color:var(--gray-mid); font-size:0.92rem; margin-bottom:24px;">You made it through all 7 days. Ready for a fresh plan for next week?</p>
       <button class="btn-generate" onclick="startNewPlan()">Generate Next Week's Plan</button>
     </div>
@@ -236,7 +259,7 @@
 <div class="modal-overlay" id="workout-modal">
   <div class="modal" style="max-width:480px;">
     <button class="modal-close" onclick="closeLoggerModal('workout-modal')">✕</button>
-    <div class="modal-headline">LOG <span>WORKOUT</span></div>
+    <div class="modal-headline">Log <span>workout</span></div>
     <p class="modal-sub" id="workout-modal-sub">Today's session</p>
     <div id="workout-modal-body"></div>
     <button class="btn-modal-submit" onclick="saveWorkoutLog()">Save Workout Log</button>
@@ -246,7 +269,7 @@
 <div class="modal-overlay" id="meal-modal">
   <div class="modal" style="max-width:480px;">
     <button class="modal-close" onclick="closeLoggerModal('meal-modal')">✕</button>
-    <div class="modal-headline">LOG <span>MEALS</span></div>
+    <div class="modal-headline">Log <span>meals</span></div>
     <p class="modal-sub" id="meal-modal-sub">Today's meals</p>
     <div id="meal-modal-body"></div>
     <div class="form-field">
@@ -265,7 +288,7 @@
 <div class="modal-overlay" id="sleep-modal">
   <div class="modal" style="max-width:420px;">
     <button class="modal-close" onclick="closeLoggerModal('sleep-modal')">✕</button>
-    <div class="modal-headline">LOG <span>SLEEP</span></div>
+    <div class="modal-headline">Log <span>sleep</span></div>
     <p class="modal-sub" id="sleep-modal-sub">How did last night go?</p>
     <div class="form-field">
       <label>Hours Slept</label>
@@ -290,13 +313,13 @@
 <!-- ════════════════════════════════ PAGE: DASHBOARD ════════════════════════════════ -->
 <div class="page" id="page-dashboard">
   <div class="dashboard-hero">
-    <div class="dashboard-welcome">WELCOME BACK, <span id="dash-name">ATHLETE</span></div>
-    <div class="dashboard-sub">Fill in your details and and we'll build your personalised 7-day plan.</div>
+    <div class="dashboard-welcome">Welcome back, <span id="dash-name">Athlete</span></div>
+    <div class="dashboard-sub">Fill in your details and we'll build your personalised 7-day plan.</div>
   </div>
 
   <div class="intake-section">
     <div class="intake-card" id="intake-card">
-      <div class="intake-title">YOUR <span>PROFILE</span></div>
+      <div class="intake-title">Your <span>profile</span></div>
       <div class="intake-subtitle">Every field shapes your plan. The more accurate, the better the output.</div>
 
       <!-- Gender -->
@@ -310,7 +333,7 @@
 
       <div class="section-divider-form">Body Stats</div>
       <div class="form-grid">
-        <div class="form-group"><label>Age</label><input type="number" id="f-age" placeholder="25" min="16" max="80" /></div>
+        <div class="form-group"><label>Age</label><input type="number" id="f-age" placeholder="25" min="18" max="80" /></div>
         <div class="form-group"><label>Height (cm)</label><input type="number" id="f-height" placeholder="175" min="140" max="220" /></div>
         <div class="form-group"><label>Weight (kg)</label><input type="number" id="f-weight" placeholder="80" min="40" max="200" /></div>
         <div class="form-group"><label>Body Fat % (est.)</label><input type="number" id="f-bf" placeholder="18" min="5" max="55" /></div>
@@ -399,13 +422,13 @@
       <div class="disclosure-box" id="generate-error" style="display:none; margin-top:16px; margin-bottom:0;"></div>
 
       <button class="btn-generate" id="generate-btn" onclick="generatePlan()">
-        <span>⚡</span> GENERATE MY 7-DAY PLAN
+        GENERATE MY 7-DAY PLAN →
       </button>
     </div>
 
     <!-- BLOCKED (health screening) -->
     <div class="intake-card" id="blocked-card" style="display:none;">
-      <div class="intake-title">LET'S <span>PAUSE</span> HERE</div>
+      <div class="intake-title">Let's <span>pause</span> here</div>
       <div class="intake-subtitle">We can't safely build a plan from your answers.</div>
       <div id="blocked-message" class="blocked-message"></div>
       <button class="btn-generate" onclick="backToForm()">Update my answers</button>
@@ -414,7 +437,7 @@
     <!-- LOADING -->
     <div class="loading-screen" id="loading-screen">
       <div class="forge-spinner"></div>
-      <div class="loading-title">BUILDING YOUR <span>PLAN</span></div>
+      <div class="loading-title">Building your <span>plan</span></div>
       <p style="font-size:0.88rem;color:var(--gray-mid);margin-bottom:20px;">We're calculating your targets and building your 7-day program.</p>
       <ul class="loading-steps-list" id="loading-steps">
         <li id="ls-1">Analysing your body stats &amp; goal</li>
@@ -430,11 +453,11 @@
     <div class="plan-output" id="plan-output">
       <div class="plan-header">
         <div>
-          <div class="plan-header-title">YOUR 7-DAY <span id="ph-goal">PLAN</span></div>
+          <div class="plan-header-title">Your 7-day <span id="ph-goal">custom</span> plan</div>
           <div class="plan-header-meta" id="ph-meta"></div>
         </div>
         <div style="display:flex; gap:10px;">
-          <button class="btn-regenerate" style="background:#2a2a2a;" onclick="enterApp()">📊 Go to Dashboard</button>
+          <button class="btn-regenerate" style="background:#2a2a2a;" onclick="enterApp()">Go to Dashboard</button>
           <button class="btn-regenerate" onclick="resetPlan()">↺ New Plan</button>
         </div>
       </div>

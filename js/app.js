@@ -240,7 +240,7 @@ function showLoggedOutUI() {
 }
 
 function setLoggedIn() {
-  const first = currentUser.name.split(' ')[0].toUpperCase();
+  const first = currentUser.name.split(' ')[0];
   document.getElementById('nav-user-label').textContent = currentUser.name;
   document.getElementById('nav-user-label').style.display = 'inline';
   document.getElementById('nav-cta').style.display = 'none';
@@ -270,7 +270,7 @@ function enterApp() {
     renderProgressPage(saved.plan, saved.goal);
     showPage('page-progress');
   } else {
-    document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0].toUpperCase();
+    document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0];
     showPage('page-dashboard');
     resetPlan();
   }
@@ -491,12 +491,20 @@ function renderNotes(notes) {
     notes.map(n => `<div class="note-card note-${n.level === 'caution' ? 'caution' : 'info'}">${escapeAttr(n.text)}</div>`).join('');
 }
 
+const MOON_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+
+function setWelcomeBanner(show) {
+  const h = document.querySelector('#page-dashboard .dashboard-hero');
+  if (h) h.style.display = show ? '' : 'none';
+}
+
 function renderPlan(plan, goal) {
+  setWelcomeBanner(false);
   const ov = plan.overview;
   const days = plan.days;
 
   // Header
-  document.getElementById('ph-goal').textContent = goal.toUpperCase();
+  document.getElementById('ph-goal').textContent = goal;
   const meta = plan.meta || {};
   const weightText = meta.weightKg || document.getElementById('f-weight').value || '—';
   const freqText = meta.freq || document.getElementById('f-freq').value || '—';
@@ -586,7 +594,7 @@ function renderPlan(plan, goal) {
   const sp = plan.sleepProtocol;
   const sleepDayRows = days.map(d => `
     <div class="sleep-row">
-      <span class="sleep-icon">🌙</span>
+      <span class="sleep-icon">${MOON_ICON}</span>
       <span class="sleep-detail">${d.day} — ${d.sleep.targetHours}hrs &nbsp;|&nbsp; ${d.sleep.bedtime} → ${d.sleep.wakeTime}</span>
       <span class="sleep-note">${d.sleep.protocol}</span>
     </div>`).join('');
@@ -609,6 +617,7 @@ function renderPlan(plan, goal) {
 }
 
 function resetPlan() {
+  setWelcomeBanner(true);
   document.getElementById('plan-output').classList.remove('show');
   document.getElementById('loading-screen').classList.remove('show');
   document.getElementById('blocked-card').style.display = 'none';
@@ -645,7 +654,7 @@ function renderProgressPage(plan, goal) {
   const idx = progress.currentDayIndex || 0;
   const totalDays = plan.days.length;
 
-  document.getElementById('progress-name').textContent = currentUser.name.split(' ')[0].toUpperCase();
+  document.getElementById('progress-name').textContent = currentUser.name.split(' ')[0];
 
   // Progress dots
   document.getElementById('progress-dots').innerHTML = plan.days.map((d, i) => {
@@ -699,7 +708,7 @@ function advanceDay() {
 function viewFullPlan() {
   const saved = loadPlan();
   if (!saved || !saved.plan) { alert('No plan found yet — generate one first.'); return; }
-  document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0].toUpperCase();
+  document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0];
   showPage('page-dashboard');
   document.getElementById('intake-card').style.display = 'none';
   document.getElementById('loading-screen').classList.remove('show');
@@ -716,7 +725,7 @@ function startNewPlan() {
   clearPlan();
   clearProgress();
   clearLogs();
-  document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0].toUpperCase();
+  document.getElementById('dash-name').textContent = currentUser.name.split(' ')[0];
   showPage('page-dashboard');
   resetPlan();
 }
@@ -1023,6 +1032,8 @@ async function deleteMyAccount() {
     if (e.target === this) closeSimpleModal(id);
   });
 });
+
+{ const y = document.getElementById('footer-year'); if (y) y.textContent = new Date().getFullYear(); }
 
 init();
 wireFormAutoSave();

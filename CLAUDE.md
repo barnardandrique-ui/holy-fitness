@@ -21,7 +21,7 @@ If you have real file/git access, act on it.
 
 ```
 index.html                Landing page, dashboard, intake form (incl. health check), progress page, modals
-css/styles.css, extra.css  Styling (red/black "Holy Fitness" branding)
+css/styles.css, extra.css, brand.css  Styling (brand.css = the corporate identity, loaded last)
 js/app.js                  Frontend logic: auth, state sync, plan rendering, dashboard, loggers
 privacy.html, terms.html   Legal pages — DRAFTS with [PLACEHOLDERS]; need lawyer review
 api/auth/*.js              signup (consent + 8-char pw), login (lockout after 8 fails/15 min),
@@ -80,6 +80,19 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Brand / corporate identity (keep consistent)
+
+Logo: the HF monogram (red H whose stem becomes a blade, black F, gold halo). Source was a PNG only,
+so `assets/logo*.svg` are TRACES (icons: favicon-32, apple-touch-icon, icon-192; og-image.png for sharing) (fine for screen; commission a redraw for large print). Never recolour;
+use `assets/logo.svg` on light and `assets/logo-reversed.svg` (white F) on dark.
+Colours (css/brand.css variables): Holy Red #E10000, Ink #0B0B0B, Halo Gold #D6BA82, Deep Gold #8A6B2E
+(gold as text on light), Paper #FBF9F5, Warm Line #E7E1D6, Wine #3D0000.
+Type: Bodoni Moda 700/900 for display (sentence case, one italic red word), Barlow for UI, Barlow
+Condensed for labels/buttons. Fonts load from Google Fonts (disclosed in the privacy policy).
+No emoji in the UI; use line icons. Never call the plans "AI". Tagline: "Train with intent."
+`brand.html` is the living guideline page (noindex). `css/brand.css` loads LAST and overrides styles.css.
+If the production domain changes, update the og:image URL in index.html.
+
 ## Health screening (IMPORTANT — don't weaken)
 
 `safety.js` runs before anything else. **Blockers** (heart condition, chest pain,
@@ -106,7 +119,7 @@ Health answers are NOT stored as a record; plan notes mention them only generall
 
 ## Next steps (rough priority)
 
-1. Fill in and legally review `privacy.html` / `terms.html`.
+1. Fill in and have a South African attorney review `privacy.html` / `terms.html` (POPIA; placeholders for contact email, address, Information Officer). Register the Information Officer with the Information Regulator.
 2. Set up Resend with a verified domain so password resets work for everyone.
 3. Show target-vs-actual macros per day (`nutrition.targets` is already returned).
 4. Equipment/injury inputs (home vs gym), more cuisines in `foods.js`.

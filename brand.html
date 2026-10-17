@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Brand guidelines — Holy Fitness</title>
+<meta name="theme-color" content="#0B0B0B" />
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,600;0,700;0,900;1,700&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/styles.css" />
+<link rel="stylesheet" href="/css/extra.css" />
+<link rel="stylesheet" href="/css/brand.css" />
+<style>
+.bg { max-width: 1080px; margin: 0 auto; padding: 56px 32px 90px; }
+.bg h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.6rem, 6vw, 4.2rem); letter-spacing: -0.015em; line-height: 1; margin-bottom: 14px; }
+.bg h1 em { color: var(--red); }
+.bg .lede { font-size: 1.1rem; color: #3b3832; max-width: 640px; line-height: 1.7; margin-bottom: 40px; }
+.bg section { margin-top: 64px; }
+.bg h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.9rem; letter-spacing: -0.01em; margin-bottom: 8px; }
+.bg h2::before { content: ''; display: block; width: 36px; height: 2px; background: var(--gold); margin-bottom: 14px; }
+.bg p.note { color: var(--gray-mid); font-size: 0.95rem; line-height: 1.7; max-width: 700px; margin-bottom: 22px; }
+.logo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.panel { border-radius: 12px; padding: 44px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border: 1px solid var(--gray-light); }
+.panel.dark { background: var(--black); border-color: #000; }
+.panel.wine { background: var(--red-deep); border-color: var(--red-deep); }
+.panel img { height: 200px; width: auto; }
+.panel span { font-family: var(--font-label); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gray-mid); }
+.panel.dark span, .panel.wine span { color: rgba(255,255,255,0.6); }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 18px; }
+.rule { background: #fff; border: 1px solid var(--gray-light); border-radius: 10px; padding: 18px 20px; font-size: 0.9rem; line-height: 1.6; }
+.rule b { display: block; font-family: var(--font-label); letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.78rem; color: var(--gold-deep); margin-bottom: 6px; }
+.rule.no b { color: var(--red); }
+.swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.sw .chip { height: 96px; border-radius: 10px 10px 0 0; padding: 14px 16px; font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; display: flex; align-items: flex-end; }
+.sw .meta { border: 1px solid var(--gray-light); border-top: none; border-radius: 0 0 10px 10px; background: #fff; padding: 12px 16px; font-size: 0.82rem; line-height: 1.55; color: var(--gray-mid); }
+.sw .meta b { color: var(--black); font-family: var(--font-label); letter-spacing: 0.08em; }
+.type { background: #fff; border: 1px solid var(--gray-light); border-radius: 12px; padding: 28px 30px; margin-bottom: 16px; }
+.type small { display: block; font-family: var(--font-label); letter-spacing: 0.18em; text-transform: uppercase; font-size: 0.75rem; color: var(--gold-deep); margin-bottom: 10px; }
+.type .d { font-family: var(--font-display); font-weight: 900; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -0.012em; }
+.type .d em { color: var(--red); font-weight: 700; }
+.type .u { font-size: 1.05rem; line-height: 1.7; max-width: 620px; }
+.type .l { font-family: var(--font-label); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; font-size: 0.9rem; }
+.demo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+.dl a { display: inline-block; margin: 0 14px 10px 0; color: var(--red); font-weight: 600; }
+@media (max-width: 700px) { .logo-grid { grid-template-columns: 1fr; } .bg { padding: 36px 20px 70px; } }
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="/" aria-label="Holy Fitness home"><img class="logo-mark" src="/assets/logo.svg" alt="" width="28" height="42" /><span class="logo-word">Holy Fitness</span></a>
+  <div class="nav-right"><a class="btn-nav-ghost" href="/" style="text-decoration:none;">← Back to the app</a></div>
+</nav>
+
+<main class="bg">
+  <p class="hero-eyebrow">Corporate identity · Version 1.0</p>
+  <h1>Brand <em>guidelines.</em></h1>
+  <p class="lede">Holy Fitness is training with discipline and reverence: precise, calm and honest. The identity comes from the logo itself: a red H whose stem becomes a blade, a black F, and a golden halo.</p>
+
+  <section>
+    <h2>The logo</h2>
+    <p class="note">The monogram is the primary mark. Use the full-colour version on light backgrounds and the reversed version (white F) on dark ones. The F is never black on a dark background.</p>
+    <div class="logo-grid">
+      <div class="panel" style="background:var(--off-white)"><img src="/assets/logo.svg" alt="Holy Fitness logo, full colour" /><span>Full colour · light backgrounds</span></div>
+      <div class="panel dark"><img src="/assets/logo-reversed.svg" alt="Holy Fitness logo, reversed" /><span>Reversed · dark backgrounds</span></div>
+    </div>
+    <div class="rules">
+      <div class="rule"><b>Clear space</b>Keep a margin equal to the width of the F on every side. Nothing enters that space.</div>
+      <div class="rule"><b>Minimum size</b>Never smaller than 24 px high on screen, or 12 mm in print. Below that, use the favicon tile.</div>
+      <div class="rule"><b>Wordmark</b>HOLY FITNESS in Bodoni Moda Bold, all caps, letter-spaced 20%. Use the supplied lockups; don't retype it.</div>
+      <div class="rule no"><b>Don't</b>Recolour, stretch, rotate, outline, add shadows, or place the logo on busy photos.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colour</h2>
+    <p class="note">Three colours come straight from the logo. Everything else supports them. Red is for action and emphasis, so it stays rare. Gold is an accent, never a fill for large areas.</p>
+    <div class="swatches"><div class="sw"><div class="chip" style="background:#E10000;color:#fff;">Holy Red</div><div class="meta"><b>#E10000</b> · RGB 225, 0, 0<br>Primary actions, emphasis, the H and blade of the logo.</div></div><div class="sw"><div class="chip" style="background:#0B0B0B;color:#fff;">Ink</div><div class="meta"><b>#0B0B0B</b> · RGB 11, 11, 11<br>Text, dark sections, the F of the logo.</div></div><div class="sw"><div class="chip" style="background:#D6BA82;color:#0B0B0B;">Halo Gold</div><div class="meta"><b>#D6BA82</b> · RGB 214, 186, 130<br>Fine rules, numerals on dark, small accents. Never for body text on light.</div></div><div class="sw"><div class="chip" style="background:#8A6B2E;color:#fff;">Deep Gold</div><div class="meta"><b>#8A6B2E</b> · RGB 138, 107, 46<br>Gold used as text on light backgrounds (labels, eyebrows).</div></div><div class="sw"><div class="chip" style="background:#FBF9F5;color:#0B0B0B;border:1px solid #E7E1D6;">Paper</div><div class="meta"><b>#FBF9F5</b> · RGB 251, 249, 245<br>Page background.</div></div><div class="sw"><div class="chip" style="background:#E7E1D6;color:#0B0B0B;border:1px solid #E7E1D6;">Warm Line</div><div class="meta"><b>#E7E1D6</b> · RGB 231, 225, 214<br>Hairlines, borders, dividers.</div></div><div class="sw"><div class="chip" style="background:#3D0000;color:#fff;">Wine</div><div class="meta"><b>#3D0000</b> · RGB 61, 0, 0<br>Deep section background, with gold type.</div></div></div>
+  </section>
+
+  <section>
+    <h2>Typography</h2>
+    <div class="type"><small>Display · Bodoni Moda 700 / 900</small><div class="d">Train with <em>intent.</em></div><p class="note" style="margin:10px 0 0">Headlines in sentence case. One italic red word carries the emphasis. Its sharp serifs echo the H and F.</p></div>
+    <div class="type"><small>Interface and body · Barlow 400 / 500 / 600</small><div class="u">Personalised 7-day programs with nutrition, training splits and sleep protocols, calculated from your body composition and your goal.</div></div>
+    <div class="type"><small>Labels and buttons · Barlow Condensed 600 / 700</small><div class="l">Get started · Training days / week · Health check</div></div>
+  </section>
+
+  <section>
+    <h2>Interface</h2>
+    <p class="note">Warm paper background, black cards and headers with a thin gold rule, red only for the primary action.</p>
+    <div class="demo"><button class="btn-primary">Get started</button><button class="btn-outline">View programs</button><span class="program-tag" style="background:var(--black);padding:8px 12px;margin:0">Men · Strength</span></div>
+    <div class="note-card note-info" style="max-width:560px">Information notes use a soft gold tint.</div>
+    <div class="note-card note-caution" style="max-width:560px">Cautions use a soft red tint and always say what to do next.</div>
+  </section>
+
+  <section>
+    <h2>Voice</h2>
+    <div class="rules">
+      <div class="rule"><b>Tagline</b>Train with intent.</div>
+      <div class="rule"><b>Precise</b>Show the numbers and where they come from. Say “calculated”, never “AI-powered”.</div>
+      <div class="rule"><b>Calm</b>No hype, no shame. Encourage, never scold.</div>
+      <div class="rule"><b>Honest</b>We give general guidance, not medical advice, and we say so. When something needs a doctor, we say that too.</div>
+    </div>
+  </section>
+
+  <section class="dl">
+    <h2>Files</h2>
+    <p class="note">The website uses these vector files. The full kit (lockups, black and white versions, PNG exports) is supplied separately.</p>
+    <a href="/assets/logo.svg" download>logo.svg</a><a href="/assets/logo-reversed.svg" download>logo-reversed.svg</a><a href="/assets/apple-touch-icon.png" download>app-icon.png</a><a href="/assets/og-image.png" download>og-image.png</a>
+  </section>
+</main>
+</body>
+</html>
