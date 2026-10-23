@@ -100,7 +100,7 @@ The service worker is deliberately tiny: it ONLY serves `offline.html` when a pa
 plans and the API always go to the network, so nobody gets stuck on an old version or stale health data.
 Don't add caching of app files without a versioning plan. `install.js`: Android/Chrome/Edge hold the
 `beforeinstallprompt` event and fire it from our "Add App to Home Screen" button; iPhone/iPad (no install API)
-get a Share -> Add to Home Screen guide; in-app browsers are told to open the real browser; installed or
+get a Share -> Add to Home Screen guide; **Samsung Internet is deliberately NOT given the one-tap install** (its own install package was blocked by Google Play Protect as "Unsafe app blocked" on a real phone, while Chrome's installs cleanly), so it gets a "use Chrome" guide with Samsung's shortcut route as the alternative; in-app browsers are told to open the real browser; installed or
 unsupported browsers see nothing. The card shows only when signed in, is dismissible for 14 days, and an
 accepted install is remembered. The Account dialog always offers it. Detection rules are pure functions,
 unit-tested. When launched from the home screen the nav respects the notch (`env(safe-area-inset-*)`).

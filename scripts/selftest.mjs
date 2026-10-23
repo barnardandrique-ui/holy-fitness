@@ -55,6 +55,8 @@ const iphone = IN.detectPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like M
 const droid = IN.detectPlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36', '', 5, false);
 check('install: iPhone gets the Share / Add to Home Screen guide', IN.installMode(iphone, false) === 'ios');
 check('install: Android Chrome with a browser prompt uses the one-tap install', IN.installMode(droid, true) === 'native');
+const samsung = IN.detectPlatform('Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/24.0 Chrome/117.0.0.0 Mobile Safari/537.36', '', 5, false);
+check('install: Samsung Internet is guided to Chrome (its own install package trips Play Protect)', IN.installMode(samsung, true) === 'samsung');
 check('install: nothing is offered once the app is already installed', IN.installMode({ ...droid, standalone: true }, true) === 'none');
 const man = JSON.parse(fs.readFileSync(new URL('../site.webmanifest', import.meta.url), 'utf8'));
 check('install: manifest has 192 + 512 icons and a maskable icon', ['192x192', '512x512'].every(sz => man.icons.some(i => i.sizes === sz)) && man.icons.some(i => i.purpose === 'maskable') && man.display === 'standalone');

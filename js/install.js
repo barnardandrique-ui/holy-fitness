@@ -35,6 +35,9 @@
   // 'native' = fire the browser's own install prompt; others open a how-to guide; 'none' = show nothing.
   function installMode(p, hasPrompt) {
     if (p.standalone) return 'none';
+    // Samsung Internet builds its own install package, which Google Play Protect has flagged on some phones
+    // ("Unsafe app blocked"). Chrome's install is clean, so send Samsung users there instead of triggering it.
+    if (p.os === 'android' && p.browser === 'samsung' && !p.inApp) return 'samsung';
     if (hasPrompt) return 'native';
     if (p.os === 'ios') return p.inApp ? 'ios-inapp' : 'ios';
     if (p.os === 'android') return p.inApp ? 'android-inapp' : 'android-menu';
@@ -116,7 +119,12 @@
       'Tap the browser menu <b>⋮</b> (top right).',
       'Tap <b>Install app</b> or <b>Add to Home screen</b>.',
       'Tap <b>Install</b> to confirm.',
-    ], note: '' },
+    ], note: 'If your phone shows a safety warning, choose Create shortcut (or Add page to Home screen) instead.' },
+    samsung: { title: 'Add to <span>home screen</span>', intro: 'For the smoothest install on a Samsung phone, use Chrome.', steps: [
+      'Open <b>Chrome</b> and go to <b>{host}</b>, then sign in.',
+      'Tap <b>⋮</b> in Chrome, then <b>Install app</b> (or <b>Add to Home screen</b>).',
+      'Tap <b>Install</b>. Holy Fitness now sits on your home screen.',
+    ], note: 'Prefer to stay in Samsung Internet? Open its menu (≡), tap Add page to, then Home screen. It adds a shortcut that opens in the browser rather than full screen.' },
     'android-inapp': { title: 'Open in <span>your browser</span> first', intro: "This in-app browser can't install apps.", steps: [
       'Tap the <b>⋮</b> menu in the corner and choose <b>Open in Chrome</b> (or <b>Open in browser</b>).',
       'In Chrome, tap <b>⋮</b> then <b>Install app</b> or <b>Add to Home screen</b>.',
@@ -127,7 +135,8 @@
     const g = GUIDES[m]; if (!g) return;
     document.getElementById('install-title').innerHTML = g.title;
     document.getElementById('install-intro').textContent = g.intro;
-    document.getElementById('install-steps').innerHTML = g.steps.map(s => `<li>${s}</li>`).join('');
+    const host = String(location.host).replace(/[<>&"']/g, '');
+    document.getElementById('install-steps').innerHTML = g.steps.map(s => `<li>${s.replace('{host}', host)}</li>`).join('');
     const noteText = (m === 'ios' && platform().browser === 'safari') ? '' : g.note;   // the "try Safari" tip is only for other iPhone browsers
     const note = document.getElementById('install-note'); note.textContent = noteText; note.hidden = !noteText;
     document.getElementById('install-modal').classList.add('open');
