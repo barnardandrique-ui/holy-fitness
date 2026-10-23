@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#0B0B0B" />
+<title>Offline - Holy Fitness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { min-height: 100vh; background: #0B0B0B; color: #fff; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; padding: 28px; text-align: center; }
+  main { max-width: 420px; }
+  img { height: 110px; width: auto; margin-bottom: 26px; }
+  h1 { font-family: 'Bodoni Moda', Didot, 'Bodoni 72', Georgia, serif; font-size: 2.3rem; font-weight: 700; line-height: 1.1; margin-bottom: 14px; }
+  h1 em { color: #FF2B1F; }
+  p { color: rgba(255, 255, 255, 0.72); line-height: 1.65; margin-bottom: 28px; }
+  button { background: #E10000; color: #fff; border: 0; border-radius: 6px; padding: 14px 28px; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+  .rule { width: 44px; height: 2px; background: #D6BA82; margin: 0 auto 22px; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/assets/logo-reversed.svg" alt="Holy Fitness" />
+  <div class="rule"></div>
+  <h1>You're <em>offline.</em></h1>
+  <p>Holy Fitness needs a connection to load your plan and save your progress. Everything you've logged is safe and will be here when you're back online.</p>
+  <button onclick="location.reload()">Try again</button>
+</main>
+</body>
+</html>

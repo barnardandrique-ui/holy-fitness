@@ -231,6 +231,7 @@ async function doLogout() {
 
 function showLoggedOutUI() {
   document.body.classList.remove('logged-in');
+  if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
   currentUser = null;
   appState = defaultState();
   dirty = false;
@@ -252,6 +253,7 @@ function setLoggedIn() {
   document.getElementById('nav-account').style.display = 'inline';
   document.getElementById('nav-history').style.display = 'inline';
   document.body.classList.add('logged-in');
+  if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
   document.getElementById('dash-name').textContent = first;
 }
 
@@ -284,6 +286,7 @@ function enterApp() {
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
 }
 
 // ══════════════════════════════════════════════
@@ -744,12 +747,14 @@ function advanceDay() {
 
 let toastTimer = null;
 function showToast(msg) {
+  // (also reachable as window.showToast for install.js)
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 4800);
 }
+window.showToast = showToast;
 
 let confettiRaf = null;
 function launchConfetti() {
@@ -1203,6 +1208,7 @@ function openAccount() {
   document.getElementById('account-sub').textContent = `Signed in as ${currentUser.email}`;
   document.getElementById('delete-password').value = '';
   document.getElementById('delete-error').textContent = '';
+  if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
   document.getElementById('account-modal').classList.add('open');
 }
 

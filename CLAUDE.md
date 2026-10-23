@@ -93,6 +93,18 @@ arrays `w` workout, `m` meals, `s` sleep, `x` extras, `n` notes). History is PER
 clears `logs` but never `history`. It syncs via `/api/state` (validated + scrubbed in `cleanHistory`, capped at 730
 entries). The History page has Days / Weeks (Mon-Sun) / Months (calendar) views. Respect `prefers-reduced-motion`.
 
+## Install as an app (PWA)
+
+`site.webmanifest` (192 + 512 + maskable icons), `sw.js` and `js/install.js` make the site installable.
+The service worker is deliberately tiny: it ONLY serves `offline.html` when a page cannot load; scripts, styles,
+plans and the API always go to the network, so nobody gets stuck on an old version or stale health data.
+Don't add caching of app files without a versioning plan. `install.js`: Android/Chrome/Edge hold the
+`beforeinstallprompt` event and fire it from our "Add App to Home Screen" button; iPhone/iPad (no install API)
+get a Share -> Add to Home Screen guide; in-app browsers are told to open the real browser; installed or
+unsupported browsers see nothing. The card shows only when signed in, is dismissible for 14 days, and an
+accepted install is remembered. The Account dialog always offers it. Detection rules are pure functions,
+unit-tested. When launched from the home screen the nav respects the notch (`env(safe-area-inset-*)`).
+
 ## Brand / corporate identity (keep consistent)
 
 Logo: the HF monogram (red H whose stem becomes a blade, black F, gold halo). Source was a PNG only,

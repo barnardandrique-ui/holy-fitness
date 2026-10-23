@@ -46,5 +46,22 @@ const E = (date, perfect) => ({ id: date, planId: 'p', dayIndex: 0, date, hits: 
 check('history: three perfect days in a row make a streak of three', PR.streaks([E('2026-10-15', 1), E('2026-10-16', 1), E('2026-10-17', 1)], '2026-10-17').current === 3);
 check('history: a missed day breaks the streak', PR.streaks([E('2026-10-14', 1), E('2026-10-16', 1)], '2026-10-16').current === 1);
 
+
+// ── Add App to Home Screen (js/install.js + the files a browser needs to treat the site as an app) ──
+const ictx = {}; ictx.globalThis = ictx; vm.createContext(ictx);
+vm.runInContext(fs.readFileSync(new URL('../js/install.js', import.meta.url), 'utf8'), ictx);
+const IN = ictx.HFInstall;
+const iphone = IN.detectPlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1', '', 5, false);
+const droid = IN.detectPlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36', '', 5, false);
+check('install: iPhone gets the Share / Add to Home Screen guide', IN.installMode(iphone, false) === 'ios');
+check('install: Android Chrome with a browser prompt uses the one-tap install', IN.installMode(droid, true) === 'native');
+check('install: nothing is offered once the app is already installed', IN.installMode({ ...droid, standalone: true }, true) === 'none');
+const man = JSON.parse(fs.readFileSync(new URL('../site.webmanifest', import.meta.url), 'utf8'));
+check('install: manifest has 192 + 512 icons and a maskable icon', ['192x192', '512x512'].every(sz => man.icons.some(i => i.sizes === sz)) && man.icons.some(i => i.purpose === 'maskable') && man.display === 'standalone');
+check('install: every manifest icon file exists', man.icons.every(i => fs.existsSync(new URL('..' + i.src, import.meta.url))));
+check('install: service worker and offline page exist', fs.existsSync(new URL('../sw.js', import.meta.url)) && fs.existsSync(new URL('../offline.html', import.meta.url)));
+const swText = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+check('install: the service worker never caches scripts, styles or the API', !/\/api/.test(swText) && !/app\.js|\.css/.test(swText));
+
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);

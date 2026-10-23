@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Holy Fitness" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <title>Holy Fitness — Train with intent</title>
 <meta name="description" content="Personalised 7-day training, nutrition and sleep plans calculated from your body composition. Built around a health check, so it's safe by design." />
 <meta name="theme-color" content="#0B0B0B" />
@@ -99,6 +103,7 @@
     <button class="modal-close" onclick="closeSimpleModal('account-modal')">✕</button>
     <div class="modal-headline">My <span>account</span></div>
     <p class="modal-sub" id="account-sub"></p>
+    <button class="btn-modal-submit" id="account-install" hidden onclick="closeSimpleModal('account-modal'); HFInstall.install();" style="margin-bottom:12px;">Add App to Home Screen</button>
     <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
     <div class="danger-zone">
       <div class="danger-title">Delete my account</div>
@@ -201,6 +206,12 @@
   </div>
 
   <div class="intake-section">
+    <div class="install-card" hidden>
+      <img class="install-mark" src="/assets/logo-reversed.svg" alt="" width="34" height="52" />
+      <div class="install-copy"><b>Keep Holy Fitness one tap away</b><span>Add it to your home screen to log your day in seconds, full screen, just like an app.</span></div>
+      <button class="btn-primary install-btn" onclick="HFInstall.install()">Add App to Home Screen</button>
+      <button class="install-x" aria-label="Not now" onclick="HFInstall.dismiss()">✕</button>
+    </div>
     <div class="progress-dots" id="progress-dots"></div>
 
     <!-- Active day card -->
@@ -320,6 +331,13 @@
   </div>
 
   <div class="intake-section">
+    <div class="install-card" hidden>
+      <img class="install-mark" src="/assets/logo-reversed.svg" alt="" width="34" height="52" />
+      <div class="install-copy"><b>Keep Holy Fitness one tap away</b><span>Add it to your home screen to log your day in seconds, full screen, just like an app.</span></div>
+      <button class="btn-primary install-btn" onclick="HFInstall.install()">Add App to Home Screen</button>
+      <button class="install-x" aria-label="Not now" onclick="HFInstall.dismiss()">✕</button>
+    </div>
+
     <div class="intake-card" id="intake-card">
       <div class="intake-title">Your <span>profile</span></div>
       <div class="intake-subtitle">Every field shapes your plan. The more accurate, the better the output.</div>
@@ -535,7 +553,20 @@
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<div class="modal-overlay" id="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-title">
+  <div class="modal">
+    <button class="modal-close" onclick="HFInstall.closeHelp()" aria-label="Close">✕</button>
+    <div class="modal-logo"><img class="logo-mark" src="/assets/logo.svg" alt="" width="22" height="33" /><span class="logo-word">Holy Fitness</span></div>
+    <div class="modal-headline" id="install-title">Add to <span>home screen</span></div>
+    <p class="modal-sub" id="install-intro"></p>
+    <ol class="install-steps" id="install-steps"></ol>
+    <p class="install-note" id="install-note" hidden></p>
+    <button class="btn-modal-submit" onclick="HFInstall.closeHelp()">Got it</button>
+  </div>
+</div>
+
 <script src="/js/progress.js"></script>
+<script src="/js/install.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
