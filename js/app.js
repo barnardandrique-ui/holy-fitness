@@ -14,7 +14,7 @@ let resetToken = null;
 // drops, and is re-synced the next time the app loads.
 // ══════════════════════════════════════════════
 function defaultState() {
-  return { plan: null, goal: null, progress: { currentDayIndex: 0 }, logs: {}, updatedAt: 0 };
+  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], updatedAt: 0 };
 }
 let appState = defaultState();
 let persistTimer = null;
@@ -90,6 +90,8 @@ async function loadState() {
   if (cache && (!server || (cache.updatedAt || 0) > (server.updatedAt || 0))) chosen = cache;
   if (!chosen) chosen = migrateLegacyState();
   appState = { ...defaultState(), ...(chosen || {}) };
+  if (!Array.isArray(appState.history)) appState.history = [];
+  if (appState.plan && !appState.planId) appState.planId = 'p' + ((appState.plan.meta && appState.plan.meta.seed) || '0');
   if (chosen && chosen !== server) { writeCache(); persistState(); }
 }
 
@@ -228,11 +230,12 @@ async function doLogout() {
 }
 
 function showLoggedOutUI() {
+  document.body.classList.remove('logged-in');
   currentUser = null;
   appState = defaultState();
   dirty = false;
   localStorage.removeItem('holyfitness_form_draft');
-  ['nav-user-label', 'nav-logout', 'nav-dashboard-link', 'nav-account'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['nav-user-label', 'nav-logout', 'nav-dashboard-link', 'nav-account', 'nav-history'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('nav-cta').style.display = 'block';
   document.getElementById('nav-cta').textContent = 'Sign In';
   showPage('page-home');
@@ -247,6 +250,8 @@ function setLoggedIn() {
   document.getElementById('nav-logout').style.display = 'inline';
   document.getElementById('nav-dashboard-link').style.display = 'inline';
   document.getElementById('nav-account').style.display = 'inline';
+  document.getElementById('nav-history').style.display = 'inline';
+  document.body.classList.add('logged-in');
   document.getElementById('dash-name').textContent = first;
 }
 
@@ -628,7 +633,8 @@ function resetPlan() {
 // ══════════════════════════════════════════════
 // PLAN / PROGRESS / LOGS — held in appState, saved to the account by touch()
 // ══════════════════════════════════════════════
-function savePlan(plan, goal) { appState.plan = plan; appState.goal = goal; touch(); }
+// A new plan gets a new id, but the history of earlier plans is never touched.
+function savePlan(plan, goal) { appState.plan = plan; appState.goal = goal; appState.planId = 'p' + Date.now().toString(36); touch(); }
 function loadPlan() { return appState.plan ? { plan: appState.plan, goal: appState.goal } : null; }
 function clearPlan() { appState.plan = null; appState.goal = null; touch(); }
 
@@ -697,13 +703,111 @@ function setLogTileStatus(elId, done) {
   el.classList.toggle('done', !!done);
 }
 
-function advanceDay() {
-  const progress = loadProgress();
-  progress.currentDayIndex = (progress.currentDayIndex || 0) + 1;
-  saveProgress(progress);
+// ══════════════════════════════════════════════
+// HISTORY RECORDING + CELEBRATION
+// Every logged day becomes a permanent, compact record. If all three targets were
+// hit (workout, meals, sleep), the person gets a celebration, once per day.
+// ══════════════════════════════════════════════
+function recordDay(idx) {
   const saved = loadPlan();
-  if (saved) renderProgressPage(saved.plan, saved.goal);
+  if (!saved || !window.HFProgress) return null;
+  const day = saved.plan.days[idx];
+  if (!day) return null;
+  const prev = (appState.history || []).find(e => e.id === `${appState.planId}:${idx}`);
+  const entry = HFProgress.makeEntry(appState.planId, idx, day, (appState.logs || {})[idx] || {}, HFProgress.localDate(), prev);
+  appState.history = HFProgress.upsert(appState.history || [], entry);
+  touch();
+  return entry;
 }
+
+function afterLog(idx) {
+  const entry = recordDay(idx);
+  if (entry && entry.perfect && !entry.c) { entry.c = 1; touch(); showCelebration(entry); }
+}
+
+function advanceDay() {
+  const saved = loadPlan();
+  const progress = loadProgress();
+  const idx = progress.currentDayIndex || 0;
+  const entry = saved ? recordDay(idx) : null;
+  progress.currentDayIndex = idx + 1;
+  saveProgress(progress);
+  if (saved) renderProgressPage(saved.plan, saved.goal);
+  if (!entry) return;
+  const lastDay = idx + 1 >= saved.plan.days.length;
+  if (entry.perfect && !entry.c) { entry.c = 1; touch(); showCelebration(entry); }
+  else if (lastDay) {
+    const n = (appState.history || []).filter(e => e.planId === appState.planId && e.perfect).length;
+    showToast(`Week complete: ${n} of ${saved.plan.days.length} days hit every target.`);
+  } else if (!entry.perfect) showToast(`Day saved: ${entry.hits} of 3 targets hit. Tomorrow is a fresh start.`);
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 4800);
+}
+
+let confettiRaf = null;
+function launchConfetti() {
+  const c = document.getElementById('confetti-canvas');
+  if (!c || !c.getContext) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;   // respect "reduce motion"
+  let ctx = null;
+  try { ctx = c.getContext('2d'); } catch { ctx = null; }
+  if (!ctx) return;
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const colors = ['#E10000', '#D6BA82', '#FFFFFF', '#FF2B1F', '#F6EFDD'];
+  const bits = Array.from({ length: 170 }, () => ({
+    x: Math.random() * c.width, y: -20 - Math.random() * c.height * 0.3, w: 6 + Math.random() * 7, h: 10 + Math.random() * 10,
+    vx: -1.8 + Math.random() * 3.6, vy: 3.2 + Math.random() * 4.6, rot: Math.random() * 6.28, vr: -0.2 + Math.random() * 0.4,
+    col: colors[Math.floor(Math.random() * colors.length)],
+  }));
+  let frame = 0;
+  const total = 240;
+  if (window.cancelAnimationFrame) cancelAnimationFrame(confettiRaf);
+  (function tick() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    bits.forEach(b => {
+      b.x += b.vx; b.y += b.vy; b.vy += 0.035; b.rot += b.vr;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, frame - total * 0.6) / (total * 0.4));
+      ctx.fillStyle = b.col; ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.restore();
+    });
+    if (++frame < total && window.requestAnimationFrame) confettiRaf = requestAnimationFrame(tick); else ctx.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+function showCelebration(entry) {
+  if (!window.HFProgress) return;
+  const saved = loadPlan();
+  const c = HFProgress.celebrationFor(entry, appState.history, HFProgress.localDate(), saved ? saved.plan.days.length : 0);
+  document.getElementById('celebrate-kicker').textContent = c.kicker;
+  document.getElementById('celebrate-title').innerHTML = c.title;          // fixed text from our own code, never user input
+  document.getElementById('celebrate-msg').textContent = c.line;
+  const chip = t => `<span class="celebrate-chip">${escapeAttr(t)}</span>`;
+  document.getElementById('celebrate-chips').innerHTML =
+    chip(entry.w[1] ? `Workout ${entry.w[0]}/${entry.w[1]}` : 'Rest day') + chip(`Meals ${entry.m[0]}/${entry.m[1]}`) + chip(`Sleep ${entry.s[0]}h`);
+  const bits = [];
+  if (c.streak > 1) bits.push(`${c.streak} perfect days in a row`);
+  if (c.planDays) bits.push(`${c.planPerfect} of ${c.planDays} perfect days this plan`);
+  document.getElementById('celebrate-streak').textContent = bits.join(' · ');
+  document.getElementById('celebrate-modal').classList.add('open');
+  const btn = document.getElementById('celebrate-close');
+  if (btn) btn.focus();
+  launchConfetti();
+}
+
+function closeCelebration() {
+  document.getElementById('celebrate-modal').classList.remove('open');
+  if (window.cancelAnimationFrame) cancelAnimationFrame(confettiRaf);
+  const c = document.getElementById('confetti-canvas');
+  try { const ctx = c && c.getContext && c.getContext('2d'); if (ctx) ctx.clearRect(0, 0, c.width, c.height); } catch { /* ignore */ }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCelebration(); });
 
 function viewFullPlan() {
   const saved = loadPlan();
@@ -786,6 +890,7 @@ function saveWorkoutLog() {
 
   closeLoggerModal('workout-modal');
   renderProgressPage(saved.plan, saved.goal);
+  afterLog(idx);
 }
 
 // -- Meals --
@@ -851,6 +956,7 @@ function saveMealLog() {
 
   closeLoggerModal('meal-modal');
   renderProgressPage(saved.plan, saved.goal);
+  afterLog(idx);
 }
 
 // -- Sleep --
@@ -891,6 +997,7 @@ function saveSleepLog() {
 
   closeLoggerModal('sleep-modal');
   renderProgressPage(saved.plan, saved.goal);
+  afterLog(idx);
 }
 
 // Close logger modals on overlay click (same pattern as the auth modal)
@@ -905,6 +1012,121 @@ document.getElementById('auth-modal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
 
+
+// ══════════════════════════════════════════════
+// HISTORY PAGE — past days, weeks and months
+// ══════════════════════════════════════════════
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+let histTab = 'days';
+let histShown = 30;
+let histMonth = null;      // { y, m }
+let histPicked = null;     // date picked on the calendar
+
+const longDate = ds => { const d = HFProgress.parseDate(ds); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`; };
+const rangeLabel = (a, b) => { const x = HFProgress.parseDate(a), y = HFProgress.parseDate(b); return x.getUTCMonth() === y.getUTCMonth() ? `${x.getUTCDate()}–${y.getUTCDate()} ${MONTHS[y.getUTCMonth()].slice(0, 3)} ${y.getUTCFullYear()}` : `${x.getUTCDate()} ${MONTHS[x.getUTCMonth()].slice(0, 3)} – ${y.getUTCDate()} ${MONTHS[y.getUTCMonth()].slice(0, 3)} ${y.getUTCFullYear()}`; };
+const statusOf = e => !e ? 'none' : e.perfect ? 'perfect' : e.hits > 0 ? 'part' : 'miss';
+const HALO_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="8" rx="8" ry="3.2"/><path d="M12 11v10M8 15h8" stroke-linecap="round"/></svg>';
+
+function showHistory() {
+  closeCelebration();
+  if (!histMonth) { const t = HFProgress.localDate().split('-').map(Number); histMonth = { y: t[0], m: t[1] }; }
+  showPage('page-history');
+  renderHistory();
+  window.scrollTo(0, 0);
+}
+
+function setHistoryTab(tab) { histTab = tab; renderHistory(); }
+
+function renderHistory() {
+  const hist = appState.history || [];
+  const today = HFProgress.localDate();
+  const st = HFProgress.streaks(hist, today), sm = HFProgress.summary(hist);
+  const card = (label, val, unit) => `<div class="hist-stat"><div class="hist-stat-label">${label}</div><div class="hist-stat-val">${val}</div><div class="hist-stat-unit">${unit || '&nbsp;'}</div></div>`;
+  document.getElementById('hist-stats').innerHTML =
+    card('Current streak', st.current, st.current === 1 ? 'perfect day' : 'perfect days') + card('Longest streak', st.longest, st.longest === 1 ? 'day' : 'days') +
+    card('Perfect days', sm.perfectDays, 'every target hit') + card('Days logged', sm.daysLogged, 'in total') +
+    card('Workouts done', sm.workouts, 'completed') + card('Average sleep', sm.avgSleep == null ? '—' : sm.avgSleep, sm.avgSleep == null ? '' : 'hours');
+  ['days', 'weeks', 'months'].forEach(t => {
+    document.getElementById('htab-' + t).classList.toggle('active', t === histTab);
+    document.getElementById('hist-' + t).style.display = t === histTab ? 'block' : 'none';
+  });
+  document.getElementById('hist-legend').style.display = hist.length ? 'flex' : 'none';
+  if (!hist.length) {
+    document.getElementById('hist-' + histTab).innerHTML = '<div class="hist-empty"><div class="hist-empty-title">Nothing logged yet</div><p>Log a workout, your meals or your sleep and each day will appear here. Hit all three targets and you will get a little celebration.</p></div>';
+    return;
+  }
+  if (histTab === 'days') renderHistoryDays();
+  else if (histTab === 'weeks') renderHistoryWeeks();
+  else renderHistoryMonth();
+}
+
+function pillHtml(label, state) { return `<span class="hist-pill ${state}">${label}</span>`; }
+
+function dayCardHtml(e, open) {
+  const d = HFProgress.parseDate(e.date);
+  const wPill = e.w[1] === 0 ? pillHtml('Rest day', 'hit') : pillHtml('Workout', e.w[2] ? 'hit' : e.w[0] > 0 ? 'part' : 'miss');
+  const mPill = pillHtml('Meals', e.m[4] ? 'hit' : e.m[0] > 0 ? 'part' : 'miss');
+  const sPill = pillHtml('Sleep', e.s[2] ? 'hit' : e.s[0] != null ? 'part' : 'miss');
+  const extras = (e.x || []).length ? `<div class="hist-line"><b>Extras:</b> ${e.x.map(x => escapeAttr(x[0]) + (x[1] ? ` (${x[1]} kcal)` : '')).join(', ')}</div>` : '';
+  const kcal = e.m[3] ? ` · ${e.m[2]} of ${e.m[3]} kcal` : '';
+  return `<details class="hist-day ${statusOf(e)}"${open ? ' open' : ''}>
+    <summary>
+      <div class="hist-date"><span>${d.getUTCDate()}</span><small>${MONTHS[d.getUTCMonth()].slice(0, 3)}</small></div>
+      <div class="hist-main"><div class="hist-title">${escapeAttr(longDate(e.date))} · ${escapeAttr(e.type)}</div><div class="hist-pills">${wPill}${mPill}${sPill}</div></div>
+      ${e.perfect ? `<span class="hist-badge" title="Every target hit">${HALO_ICON}</span>` : ''}
+    </summary>
+    <div class="hist-detail">
+      <div class="hist-line"><b>Workout:</b> ${e.w[1] === 0 ? 'Rest day' : `${e.w[0]} of ${e.w[1]} exercises`}</div>
+      <div class="hist-line"><b>Meals:</b> ${e.m[0]} of ${e.m[1]} planned meals${kcal}</div>
+      ${extras}
+      <div class="hist-line"><b>Sleep:</b> ${e.s[0] == null ? 'not logged' : `${e.s[0]}h of ${e.s[1]}h target${e.s[3] ? ' · ' + escapeAttr(e.s[3]) : ''}`}</div>
+      ${e.n ? `<div class="hist-line"><b>Notes:</b> ${escapeAttr(e.n)}</div>` : ''}
+      <div class="hist-line hist-muted">${e.hits} of 3 targets hit</div>
+    </div></details>`;
+}
+
+function renderHistoryDays() {
+  const list = [...(appState.history || [])].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.dayIndex - a.dayIndex));
+  const shown = list.slice(0, histShown);
+  document.getElementById('hist-days').innerHTML = shown.map(e => dayCardHtml(e, false)).join('') +
+    (list.length > shown.length ? '<button class="btn-outline hist-more" onclick="histMore()">Show earlier days</button>' : '');
+}
+function histMore() { histShown += 30; renderHistoryDays(); }
+
+function renderHistoryWeeks() {
+  const letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const ws = HFProgress.weeks(appState.history || []);
+  document.getElementById('hist-weeks').innerHTML = ws.map(w => `
+    <div class="hist-week">
+      <div class="hist-week-head"><b>${rangeLabel(w.start, w.end)}</b><span>${w.perfect} of 7 perfect · ${w.logged} logged</span></div>
+      <div class="hist-week-days">${w.days.map((d, i) => `<span class="wd ${statusOf(d.entry)}" title="${escapeAttr(longDate(d.date))}${d.entry ? ': ' + d.entry.hits + ' of 3 targets' : ': nothing logged'}">${letters[i]}</span>`).join('')}</div>
+      <div class="hist-bar" aria-hidden="true"><i style="width:${w.adherence}%"></i></div>
+      <div class="hist-week-stats">
+        <span><b>${w.adherence}%</b> of targets hit on logged days</span>
+        <span>Workouts <b>${w.workoutsDone}/${w.workoutsPlanned}</b></span>
+        <span>Avg sleep <b>${w.avgSleep == null ? '—' : w.avgSleep + 'h'}</b></span>
+        <span>Calories <b>${w.calorieRatio == null ? '—' : w.calorieRatio + '%'}</b> of plan</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderHistoryMonth() {
+  const m = HFProgress.month(appState.history || [], histMonth.y, histMonth.m);
+  const today = HFProgress.localDate();
+  const head = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="cal-h">${d}</div>`).join('');
+  const cells = m.cells.map(c => c
+    ? `<button class="cal-cell ${statusOf(c.entry)}${c.date === today ? ' today' : ''}${c.date === histPicked ? ' picked' : ''}" onclick="histPick('${c.date}')" aria-label="${escapeAttr(longDate(c.date))}">${c.day}</button>`
+    : '<span class="cal-cell blank"></span>').join('');
+  const picked = histPicked && (appState.history || []).filter(e => e.date === histPicked).sort((a, b) => b.hits - a.hits)[0];
+  document.getElementById('hist-months').innerHTML = `
+    <div class="cal-nav"><button class="btn-nav-ghost" onclick="histMonthNav(-1)" aria-label="Previous month">‹</button><div class="cal-title">${MONTHS[m.month - 1]} ${m.year}</div><button class="btn-nav-ghost" onclick="histMonthNav(1)" aria-label="Next month">›</button></div>
+    <div class="cal-grid">${head}${cells}</div>
+    <div class="cal-summary"><span><b>${m.perfect}</b> perfect days</span><span><b>${m.logged}</b> days logged</span><span><b>${m.workouts}</b> workouts</span><span>Best streak <b>${m.longestStreak}</b></span></div>
+    <div id="hist-month-detail">${picked ? dayCardHtml(picked, true) : '<p class="hist-muted" style="text-align:center;margin-top:14px;">Tap a day to see what you logged.</p>'}</div>`;
+}
+function histMonthNav(d) { let y = histMonth.y, mo = histMonth.m + d; if (mo < 1) { mo = 12; y--; } if (mo > 12) { mo = 1; y++; } histMonth = { y, m: mo }; histPicked = null; renderHistoryMonth(); }
+function histPick(date) { histPicked = date; renderHistoryMonth(); }
 
 // ══════════════════════════════════════════════
 // FORGOT / RESET PASSWORD
@@ -992,6 +1214,7 @@ function downloadMyData() {
     goal: appState.goal,
     progress: appState.progress,
     logs: appState.logs,
+    history: appState.history,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

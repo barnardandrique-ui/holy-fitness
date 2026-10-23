@@ -80,6 +80,19 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Daily targets, celebration and history (js/progress.js)
+
+Pure logic lives in `js/progress.js` (no DOM; tested with node `vm`). A day is a **perfect day** when:
+workout = every planned exercise ticked (rest days count automatically); meals = every planned meal ticked
+AND planned meals + typed extras <= 110% of the day's calories (no celebrating overeating); sleep = logged and
+within 30 minutes of the target (more sleep is never penalised). Perfect days trigger the celebration once
+(`c` flag on the entry). Streaks are consecutive calendar days with a perfect day; today doesn't break a streak
+until the day is over. Never add shaming copy: imperfect days get a kind toast only.
+Every logged / completed day is upserted into `appState.history` as a compact entry (`id = planId:dayIndex`,
+arrays `w` workout, `m` meals, `s` sleep, `x` extras, `n` notes). History is PERMANENT: starting a new plan
+clears `logs` but never `history`. It syncs via `/api/state` (validated + scrubbed in `cleanHistory`, capped at 730
+entries). The History page has Days / Weeks (Mon-Sun) / Months (calendar) views. Respect `prefers-reduced-motion`.
+
 ## Brand / corporate identity (keep consistent)
 
 Logo: the HF monogram (red H whose stem becomes a blade, black F, gold halo). Source was a PNG only,
@@ -119,6 +132,7 @@ Health answers are NOT stored as a record; plan notes mention them only generall
 
 ## Next steps (rough priority)
 
+0. (Ideas) weight/strength charts from history; weekly auto-adjust of calories; shareable week summary.
 1. Fill in and have a South African attorney review `privacy.html` / `terms.html` (POPIA; placeholders for contact email, address, Information Officer). Register the Information Officer with the Information Regulator.
 2. Set up Resend with a verified domain so password resets work for everyone.
 3. Show target-vs-actual macros per day (`nutrition.targets` is already returned).

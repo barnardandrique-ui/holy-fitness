@@ -1,6 +1,7 @@
 // api/state.js
 // Saves and loads a user's plan, progress and logs so they follow the account
-// across devices.   GET -> { state }     PUT { state } -> { ok, updatedAt }
+// across devices (including the permanent day-by-day history).
+//   GET -> { state }     PUT { state } -> { ok, updatedAt }
 import { requireUser } from '../lib/auth.js';
 import { getState, setState } from '../lib/db.js';
 
@@ -18,6 +19,35 @@ function scrub(v, depth = 0) {
     return o;
   }
   return v;
+}
+
+// One day of history. Everything is range-checked and stripped of markup, because it is rendered later.
+const clean = (v, n) => String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[<>]/g, '').slice(0, n);
+const toInt = (v, lo, hi) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null; };
+function cleanEntry(e) {
+  if (!e || typeof e !== 'object') return null;
+  const date = clean(e.date, 10);
+  const id = clean(e.id, 70);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !id || !Array.isArray(e.w) || !Array.isArray(e.m) || !Array.isArray(e.s)) return null;
+  const w = [toInt(e.w[0], 0, 40), toInt(e.w[1], 0, 40), e.w[2] ? 1 : 0];
+  const m = [toInt(e.m[0], 0, 20), toInt(e.m[1], 0, 20), toInt(e.m[2], 0, 30000), toInt(e.m[3], 0, 30000), e.m[4] ? 1 : 0];
+  if (w[0] === null || w[1] === null || m.slice(0, 4).includes(null)) return null;
+  const hrs = e.s[0] == null ? null : Number(e.s[0]);
+  const tgt = Number(e.s[1]);
+  const s = [Number.isFinite(hrs) && hrs >= 0 && hrs <= 24 ? Math.round(hrs * 10) / 10 : null, Number.isFinite(tgt) && tgt >= 0 && tgt <= 24 ? Math.round(tgt * 10) / 10 : 0, e.s[2] ? 1 : 0, clean(e.s[3], 12)];
+  const hits = toInt(e.hits, 0, 3);
+  return {
+    id, planId: clean(e.planId, 40), dayIndex: toInt(e.dayIndex, 0, 6) ?? 0, day: clean(e.day, 20), type: clean(e.type, 80), date,
+    w, m, s, hits: hits ?? 0, perfect: e.perfect && hits === 3 ? 1 : 0,
+    x: (Array.isArray(e.x) ? e.x : []).slice(0, 5).map(p => Array.isArray(p) ? [clean(p[0], 40), toInt(p[1], 0, 30000) ?? 0] : null).filter(Boolean),
+    n: clean(e.n, 200), c: e.c ? 1 : 0,
+  };
+}
+function cleanHistory(arr) {
+  if (!Array.isArray(arr)) return [];
+  const list = arr.slice(0, 1000).map(cleanEntry).filter(Boolean);
+  list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return list.slice(-730);
 }
 
 function cleanState(s) {
@@ -43,6 +73,9 @@ function cleanState(s) {
   for (const k of Object.keys(logs)) if (/^[0-6]$/.test(k)) out.logs[k] = logs[k];
   // Log notes are typed by the user: remove any HTML so it can never be rendered as markup.
   out.logs = scrub(out.logs);
+
+  out.planId = typeof s.planId === 'string' ? s.planId.replace(/[^\w:-]/g, '').slice(0, 40) || null : null;
+  out.history = cleanHistory(s.history);
 
   out.updatedAt = Number.isFinite(Number(s.updatedAt)) ? Number(s.updatedAt) : Date.now();
   return out;

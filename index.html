@@ -115,6 +115,7 @@
   <a class="logo" href="/" onclick="goHome(); return false;" aria-label="Holy Fitness home"><img class="logo-mark" src="/assets/logo.svg" alt="" width="28" height="42" /><span class="logo-word">Holy Fitness</span></a>
   <div class="nav-right">
     <button class="btn-nav-ghost" id="nav-dashboard-link" style="display:none;" onclick="enterApp()">Dashboard</button>
+    <button class="btn-nav-ghost" id="nav-history" style="display:none;" onclick="showHistory()">History</button>
     <button class="btn-nav-ghost" id="nav-account" style="display:none;" onclick="openAccount()">Account</button>
     <span class="nav-user" id="nav-user-label" style="display:none;"></span>
     <button class="btn-nav" id="nav-cta" onclick="openModal()">Sign In</button>
@@ -250,6 +251,7 @@
 
     <div class="progress-secondary-links">
       <button class="btn-outline" onclick="viewFullPlan()">View Full 7-Day Plan</button>
+      <button class="btn-outline" onclick="showHistory()">My Progress History</button>
       <button class="btn-nav-ghost" onclick="confirmStartNewPlan()">Start a New Plan</button>
     </div>
   </div>
@@ -492,6 +494,48 @@
     </div>
   </div>
 </div>
+<!-- ════════════════════════════════ PAGE: HISTORY ════════════════════════════════ -->
+<div class="page" id="page-history">
+  <div class="dashboard-hero">
+    <div class="dashboard-welcome">Your <span>progress</span></div>
+    <div class="dashboard-sub" id="history-sub">Every day you log is saved here, so you can look back at any day, week or month.</div>
+  </div>
+  <div class="intake-section history-wrap">
+    <div class="hist-stats" id="hist-stats"></div>
+    <div class="hist-tabs" role="tablist">
+      <button class="hist-tab active" id="htab-days" role="tab" onclick="setHistoryTab('days')">Days</button>
+      <button class="hist-tab" id="htab-weeks" role="tab" onclick="setHistoryTab('weeks')">Weeks</button>
+      <button class="hist-tab" id="htab-months" role="tab" onclick="setHistoryTab('months')">Months</button>
+    </div>
+    <div id="hist-days" class="hist-panel"></div>
+    <div id="hist-weeks" class="hist-panel" style="display:none;"></div>
+    <div id="hist-months" class="hist-panel" style="display:none;"></div>
+    <div class="hist-legend" id="hist-legend">
+      <span><i class="lg perfect"></i> Every target hit</span><span><i class="lg part"></i> Some targets hit</span><span><i class="lg miss"></i> Logged, none hit</span><span><i class="lg none"></i> Nothing logged</span>
+    </div>
+    <div class="hist-actions"><button class="btn-outline" onclick="enterApp()">Back to today</button></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ CELEBRATION ════════════════════════════════ -->
+<div class="modal-overlay celebrate-overlay" id="celebrate-modal" role="dialog" aria-modal="true" aria-labelledby="celebrate-title">
+  <div class="celebrate-card">
+    <div class="celebrate-mark"><img src="/assets/logo-reversed.svg" alt="" width="63" height="96" /></div>
+    <div class="celebrate-kicker" id="celebrate-kicker">Every target hit</div>
+    <h2 id="celebrate-title">Perfect <em>day.</em></h2>
+    <p id="celebrate-msg"></p>
+    <div class="celebrate-chips" id="celebrate-chips"></div>
+    <div class="celebrate-streak" id="celebrate-streak"></div>
+    <div class="celebrate-actions">
+      <button class="btn-primary" id="celebrate-close" onclick="closeCelebration()">Keep going</button>
+      <button class="btn-outline-light" onclick="closeCelebration(); showHistory();">See my progress</button>
+    </div>
+  </div>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/js/progress.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
