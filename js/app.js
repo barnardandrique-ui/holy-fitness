@@ -236,7 +236,7 @@ function showLoggedOutUI() {
   appState = defaultState();
   dirty = false;
   localStorage.removeItem('holyfitness_form_draft');
-  ['nav-user-label', 'nav-logout', 'nav-dashboard-link', 'nav-account', 'nav-history'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['nav-user-label', 'nav-logout', 'nav-dashboard-link', 'nav-account', 'nav-history', 'nav-training'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('nav-cta').style.display = 'block';
   document.getElementById('nav-cta').textContent = 'Sign In';
   showPage('page-home');
@@ -252,6 +252,7 @@ function setLoggedIn() {
   document.getElementById('nav-dashboard-link').style.display = 'inline';
   document.getElementById('nav-account').style.display = 'inline';
   document.getElementById('nav-history').style.display = 'inline';
+  document.getElementById('nav-training').style.display = 'inline';
   document.body.classList.add('logged-in');
   if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
   document.getElementById('dash-name').textContent = first;
@@ -287,6 +288,8 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
+  const tab = { 'page-progress': 'today', 'page-dashboard': 'today', 'page-training': 'training', 'page-history': 'history' }[id];
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
 }
 
 // ══════════════════════════════════════════════
@@ -551,7 +554,7 @@ function renderPlan(plan, goal) {
       </div>`;
     const exRows = (d.training.exercises || []).map(e => `
       <div class="exercise-row">
-        <span class="exercise-name">${e.name}</span>
+        <span class="exercise-name">${escapeAttr(e.name)} ${howToButton(e)}</span>
         <span class="exercise-detail">${e.sets} × ${e.reps} &nbsp;|&nbsp; ${e.rest}${e.notes ? ' — ' + e.notes : ''}</span>
       </div>`).join('');
     return `
@@ -872,7 +875,7 @@ function openWorkoutLogger() {
   } else {
     bodyHtml = exercises.map((ex, i) => {
       const checked = existing?.checks?.[i] ? 'checked' : '';
-      return `<label class="logger-check-row"><input type="checkbox" id="wex-${i}" ${checked}/><span><strong>${ex.name}</strong><span class="logger-check-detail">${ex.sets} × ${ex.reps}${ex.rest ? ' · ' + ex.rest : ''}</span></span></label>`;
+      return `<div class="logger-ex"><label class="logger-check-row"><input type="checkbox" id="wex-${i}" ${checked}/><span><strong>${escapeAttr(ex.name)}</strong><span class="logger-check-detail">${ex.sets} × ${ex.reps}${ex.rest ? ' · ' + ex.rest : ''}</span></span></label>${howToButton(ex)}</div>`;
     }).join('') +
     `<div class="form-field" style="margin-top:14px;"><label>Notes (optional)</label><input type="text" id="workout-log-notes" value="${escapeAttr(existing?.notes)}" placeholder="How did it feel?" /></div>`;
   }
@@ -1032,6 +1035,20 @@ const longDate = ds => { const d = HFProgress.parseDate(ds); return `${DOW[d.get
 const rangeLabel = (a, b) => { const x = HFProgress.parseDate(a), y = HFProgress.parseDate(b); return x.getUTCMonth() === y.getUTCMonth() ? `${x.getUTCDate()}–${y.getUTCDate()} ${MONTHS[y.getUTCMonth()].slice(0, 3)} ${y.getUTCFullYear()}` : `${x.getUTCDate()} ${MONTHS[x.getUTCMonth()].slice(0, 3)} – ${y.getUTCDate()} ${MONTHS[y.getUTCMonth()].slice(0, 3)} ${y.getUTCFullYear()}`; };
 const statusOf = e => !e ? 'none' : e.perfect ? 'perfect' : e.hits > 0 ? 'part' : 'miss';
 const HALO_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="8" rx="8" ry="3.2"/><path d="M12 11v10M8 15h8" stroke-linecap="round"/></svg>';
+
+function showTraining() {
+  closeCelebration();
+  showPage('page-training');
+  if (window.HFTraining) HFTraining.init();
+  window.scrollTo(0, 0);
+}
+
+// "How to" button for an exercise: needs a library id (new plans carry one; older plans are linked by their old name).
+function exerciseLibId(ex) { return ex.libId || (window.HF_LEGACY_EXERCISES || {})[ex.name] || null; }
+function howToButton(ex) {
+  const id = exerciseLibId(ex);
+  return id ? `<button type="button" class="howto-btn" onclick="HFTraining.open('${escapeAttr(id)}')" aria-label="How to do ${escapeAttr(ex.name)}">How to</button>` : '';
+}
 
 function showHistory() {
   closeCelebration();

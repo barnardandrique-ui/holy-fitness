@@ -105,6 +105,7 @@
     <p class="modal-sub" id="account-sub"></p>
     <button class="btn-modal-submit" id="account-install" hidden onclick="closeSimpleModal('account-modal'); HFInstall.install();" style="margin-bottom:12px;">Add App to Home Screen</button>
     <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
+    <button class="btn-modal-submit btn-secondary" onclick="closeSimpleModal('account-modal'); doLogout();">Log out</button>
     <div class="danger-zone">
       <div class="danger-title">Delete my account</div>
       <p>This permanently deletes your account, plan, progress and logs. It cannot be undone.</p>
@@ -120,6 +121,7 @@
   <a class="logo" href="/" onclick="goHome(); return false;" aria-label="Holy Fitness home"><img class="logo-mark" src="/assets/logo.svg" alt="" width="28" height="42" /><span class="logo-word">Holy Fitness</span></a>
   <div class="nav-right">
     <button class="btn-nav-ghost" id="nav-dashboard-link" style="display:none;" onclick="enterApp()">Dashboard</button>
+    <button class="btn-nav-ghost" id="nav-training" style="display:none;" onclick="showTraining()">Training</button>
     <button class="btn-nav-ghost" id="nav-history" style="display:none;" onclick="showHistory()">History</button>
     <button class="btn-nav-ghost" id="nav-account" style="display:none;" onclick="openAccount()">Account</button>
     <span class="nav-user" id="nav-user-label" style="display:none;"></span>
@@ -565,8 +567,44 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════ PAGE: TRAINING CENTER ════════════════════════════════ -->
+<div class="page" id="page-training">
+  <div class="dashboard-hero">
+    <div class="dashboard-welcome">Training <span>Center</span></div>
+    <div class="dashboard-sub">Learn the movement before you load it. Search the library, then open any exercise for photos and step-by-step instructions.</div>
+  </div>
+  <div class="intake-section training-wrap">
+    <div class="tc-search"><input id="tc-q" type="search" placeholder="Search: squat, curl, abs, back…" autocomplete="off" aria-label="Search exercises" /></div>
+    <div class="tc-filters" id="tc-filters"></div>
+    <div class="tc-bar"><span class="tc-count" id="tc-count" aria-live="polite"></span><button type="button" class="tc-clear" id="tc-clear" hidden>Clear filters</button></div>
+    <div class="tc-grid" id="tc-grid"></div>
+    <div class="tc-morewrap"><button type="button" class="btn-outline" id="tc-more" hidden>Show more</button></div>
+    <p class="tc-credit">Exercise data and photos from the open-source Free Exercise DB (public domain). General guidance, not personal coaching.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ EXERCISE DETAIL ════════════════════════════════ -->
+<div class="modal-overlay ex-overlay" id="exercise-modal" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+  <div class="modal ex-modal">
+    <button class="modal-close" onclick="HFTraining.close()" aria-label="Close">✕</button>
+    <div class="ex-media" id="ex-media"></div>
+    <div class="ex-body" id="ex-body"></div>
+    <button class="btn-modal-submit" onclick="HFTraining.close()">Done</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ MOBILE TAB BAR ════════════════════════════════ -->
+<div class="tabbar" id="tabbar" role="navigation" aria-label="Main">
+  <button type="button" data-tab="today" onclick="enterApp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>Today</button>
+  <button type="button" data-tab="training" onclick="showTraining()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Training</button>
+  <button type="button" data-tab="history" onclick="showHistory()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>History</button>
+  <button type="button" data-tab="account" onclick="openAccount()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Account</button>
+</div>
+
 <script src="/js/progress.js"></script>
 <script src="/js/install.js"></script>
+<script src="/js/exercise-links.js"></script>
+<script src="/js/training.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

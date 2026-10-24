@@ -21,6 +21,8 @@ See `CLAUDE.md` for the full pipeline. Run `node scripts/selftest.mjs` to check 
 index.html, css/*.css, js/app.js      Frontend
 privacy.html, terms.html              Legal pages for South Africa (DRAFTS — fill placeholders, get reviewed)
 js/progress.js                        Daily-target logic, streaks, history views (tested separately)
+js/training.js, data/, exercises/       Training Center + exercise library (876 exercises, photos)
+lib/planner/library.js                Planner exercise pools (generated from the library)
 js/install.js, sw.js, offline.html        "Add App to Home Screen", tiny service worker, offline page
 brand.html, assets/                   Brand guidelines page, logo SVGs, icons, social image
 api/auth/*                            signup, login, logout, me, forgot, reset

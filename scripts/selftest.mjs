@@ -3,6 +3,8 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { generatePlan } from '../lib/planner/engine.js';
+import { POOLS } from '../lib/planner/library.js';
+import { TEMPLATES } from '../lib/planner/exercises.js';
 import { JOINT_UNFRIENDLY } from '../lib/planner/safety.js';
 
 let bad = 0;
@@ -64,6 +66,33 @@ check('install: every manifest icon file exists', man.icons.every(i => fs.exists
 check('install: service worker and offline page exist', fs.existsSync(new URL('../sw.js', import.meta.url)) && fs.existsSync(new URL('../offline.html', import.meta.url)));
 const swText = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 check('install: the service worker never caches scripts, styles or the API', !/\/api/.test(swText) && !/app\.js|\.css/.test(swText));
+
+
+// ── Exercise library + Training Center (data/exercises.json, exercises/<id>/0.webp, js/training.js) ──
+const entries = Object.values(POOLS).flat();
+check('library: every pool entry has an id, a name and a level', entries.every(e => e.id && e.name && [1, 2, 3].includes(e.lvl)));
+check('library: no exercise is repeated inside a pool', Object.values(POOLS).every(arr => new Set(arr.map(e => e.id)).size === arr.length));
+const slotRoles = {}; Object.values(TEMPLATES).forEach(t => t.slots.forEach(sl => (slotRoles[sl.pool] = slotRoles[sl.pool] || new Set()).add(sl.role)));
+check('library: no exercise is unreachable (accessory-only exercises live only in pools that have accessory slots)', Object.entries(POOLS).every(([p, arr]) => !arr.some(e => e.noMain) || [...(slotRoles[p] || [])].some(r => !['main', 'secondary'].includes(r))));
+check('library: jumps, throws and swings are never marked safe for gentle plans', POOLS.power.every(e => !e.li));
+const risky = /\b(jump|jumps|hop|hops|bound|swing|swings|slam|throw|plyo|dip|dips|pull.?ups?|pullups|chins?|chin.?ups?|hanging|roller|walking|step.?ups?|bulgarian|decline|behind)\b|leg raise|front barbell|good morning/i;
+check('library: no high-impact or joint-stressing exercise is marked safe for gentle plans', entries.every(e => !(e.li && risky.test(e.name))));
+check('library: every training exercise in a plan carries a library id', plain.days.every(d => !d.training || (d.training.exercises || []).every(x => x.libId || /Intervals|Walk|Carry|Treadmill|Ski/.test(x.name))));
+const dataUrl = new URL('../data/exercises.json', import.meta.url);
+check('training media: data/exercises.json is present (upload and unzip the media bundle first)', fs.existsSync(dataUrl));
+if (fs.existsSync(dataUrl)) {
+  const lib = JSON.parse(fs.readFileSync(dataUrl, 'utf8')); const byId = Object.fromEntries(lib.map(e => [e.id, e]));
+  check('training media: the library has hundreds of exercises', lib.length > 800);
+  check('library: every planner exercise exists in the data with its exact name', entries.every(e => byId[e.id] && byId[e.id].name === e.name));
+  check('training media: every planner exercise has both photos on disk', entries.every(e => fs.existsSync(new URL('../exercises/' + e.id + '/0.webp', import.meta.url)) && fs.existsSync(new URL('../exercises/' + e.id + '/1.webp', import.meta.url))));
+  const tctx = {}; tctx.globalThis = tctx; vm.createContext(tctx);
+  vm.runInContext(fs.readFileSync(new URL('../js/training.js', import.meta.url), 'utf8'), tctx);
+  const found = tctx.HFTraining.filterExercises(tctx.HFTraining.prepare(lib), { q: 'squat' }).slice(0, 6).map(e => e.name);
+  check('training center: searching "squat" puts everyday beginner squats first', found.length === 6 && found.every(n => /squat/i.test(n)) && !found.includes('Squat Jerk'));
+  check('training center: "abs" finds abdominal exercises', tctx.HFTraining.filterExercises(tctx.HFTraining.prepare(lib), { q: 'abs' }).length > 50);
+}
+const vj = JSON.parse(fs.readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+check('hosting: exercise photos are cached by browsers (vercel.json)', JSON.stringify(vj).includes('/exercises/') && JSON.stringify(vj).includes('max-age'));
 
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);
