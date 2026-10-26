@@ -14,7 +14,7 @@ let resetToken = null;
 // drops, and is re-synced the next time the app loads.
 // ══════════════════════════════════════════════
 function defaultState() {
-  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], avoidFoods: [], updatedAt: 0 };
+  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], avoidFoods: [], measurements: [], targets: null, updatedAt: 0 };
 }
 let appState = defaultState();
 let persistTimer = null;
@@ -92,6 +92,8 @@ async function loadState() {
   appState = { ...defaultState(), ...(chosen || {}) };
   if (!Array.isArray(appState.history)) appState.history = [];
   if (!Array.isArray(appState.avoidFoods)) appState.avoidFoods = [];
+  if (!Array.isArray(appState.measurements)) appState.measurements = [];
+  if (!appState.targets || typeof appState.targets !== 'object') appState.targets = null;
   if (appState.plan && !appState.planId) appState.planId = 'p' + ((appState.plan.meta && appState.plan.meta.seed) || '0');
   if (chosen && chosen !== server) { writeCache(); persistState(); }
 }
@@ -476,6 +478,8 @@ async function generatePlan() {
     savePlan(plan, goal);
     saveProgress({ currentDayIndex: 0 });
     saveLogs({});
+    recordIntakeMeasurement(profile);
+    const ub = document.getElementById('update-banner'); if (ub) ub.hidden = true;
 
     document.getElementById('loading-screen').classList.remove('show');
     renderPlan(plan, goal);
@@ -666,6 +670,7 @@ function escapeAttr(str) {
 // PROGRESS DASHBOARD
 // ══════════════════════════════════════════════
 function renderProgressPage(plan, goal) {
+  renderBodyCard();
   const progress = loadProgress();
   const logs = loadLogs();
   const idx = progress.currentDayIndex || 0;
@@ -796,6 +801,8 @@ function launchConfetti() {
 
 function showCelebration(entry) {
   if (!window.HFProgress) return;
+  const sec = document.getElementById('celebrate-secondary');
+  if (sec) { sec.textContent = 'See my progress'; sec.onclick = () => { closeCelebration(); showHistory(); }; }
   const saved = loadPlan();
   const c = HFProgress.celebrationFor(entry, appState.history, HFProgress.localDate(), saved ? saved.plan.days.length : 0);
   document.getElementById('celebrate-kicker').textContent = c.kicker;
@@ -839,6 +846,7 @@ function confirmStartNewPlan() {
 }
 
 function startNewPlan() {
+  const ub = document.getElementById('update-banner'); if (ub) ub.hidden = true;
   clearPlan();
   clearProgress();
   clearLogs();
@@ -1074,11 +1082,13 @@ function renderHistory() {
     card('Current streak', st.current, st.current === 1 ? 'perfect day' : 'perfect days') + card('Longest streak', st.longest, st.longest === 1 ? 'day' : 'days') +
     card('Perfect days', sm.perfectDays, 'every target hit') + card('Days logged', sm.daysLogged, 'in total') +
     card('Workouts done', sm.workouts, 'completed') + card('Average sleep', sm.avgSleep == null ? '—' : sm.avgSleep, sm.avgSleep == null ? '' : 'hours');
-  ['days', 'weeks', 'months'].forEach(t => {
+  ['days', 'weeks', 'months', 'body'].forEach(t => {
     document.getElementById('htab-' + t).classList.toggle('active', t === histTab);
     document.getElementById('hist-' + t).style.display = t === histTab ? 'block' : 'none';
   });
-  document.getElementById('hist-legend').style.display = hist.length ? 'flex' : 'none';
+  document.getElementById('hist-stats').style.display = histTab === 'body' ? 'none' : '';
+  document.getElementById('hist-legend').style.display = hist.length && histTab !== 'body' ? 'flex' : 'none';
+  if (histTab === 'body') { renderHistoryBody(); return; }
   if (!hist.length) {
     document.getElementById('hist-' + histTab).innerHTML = '<div class="hist-empty"><div class="hist-empty-title">Nothing logged yet</div><p>Log a workout, your meals or your sleep and each day will appear here. Hit all three targets and you will get a little celebration.</p></div>';
     return;
@@ -1260,6 +1270,189 @@ function removeAvoid(id) {
 function closeSwap() { const m = document.getElementById('swap-modal'); if (m) m.classList.remove('open'); swapCtx = null; }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSwap(); });
 
+
+// ══════════════════════════════════════════════
+// BODY MEASUREMENTS, GOALS AND PLAN UPDATES
+// Weight / body fat / waist log, a 7-day trend, goals with safety floors, and a prompt to rebuild the plan when the
+// numbers it was built from have changed. Logic lives in js/body.js.
+// ══════════════════════════════════════════════
+const todayStr = () => HFProgress.localDate();
+const r1n = n => Math.round(n * 10) / 10;
+const kgTxt = n => (n == null ? '—' : r1n(n) + ' kg');
+const pctTxt = n => (n == null ? '—' : r1n(n) + '%');
+const deltaTxt = (n, unit) => (n == null ? '' : (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(r1n(n)) + unit);
+function bodyCtx() { const m = ((loadPlan() || {}).plan || {}).meta || {}; const p = m.profile || {}; return { gender: p.gender || genderVal, heightCm: p.height || null, meta: m }; }
+
+function recordIntakeMeasurement(profile) {
+  if (!window.HFBody) return;
+  const res = HFBody.validateEntry({ date: todayStr(), weight: profile.weight, bf: profile.bf }, { today: todayStr(), entries: appState.measurements });
+  if (res.ok) { appState.measurements = HFBody.upsert(appState.measurements, res.entry); touch(); }
+}
+
+function goalBarsHtml(prog) {
+  const row = (label, g, unit) => !g ? '' : `<div class="goal-row"><div class="goal-row-head"><span>${label}: ${r1n(g.target)}${unit}</span><span>${g.reached ? 'Reached' : g.maintain ? 'Hold steady' : Math.abs(g.remaining) + unit + ' to go'}</span></div><div class="goal-bar" role="progressbar" aria-valuenow="${g.pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${g.pct}%"></i></div></div>`;
+  return row('Goal weight', prog.weight, ' kg') + row('Goal body fat', prog.bf, '%');
+}
+function underweightHtml(ctx, tr) {
+  if (!ctx.heightCm || !tr || tr.weightNow == null || HFBody.bmi(tr.weightNow, ctx.heightCm) >= HFBody.MIN_BMI) return '';
+  return '<div class="body-nudge care"><b>A note about your weight.</b> Your weight is in the underweight range for your height. If you are losing weight without meaning to, or this feels difficult, please speak to a doctor or dietitian. Your plan can be updated to match.</div>';
+}
+function adviceHtml(advice) {
+  if (!advice) return '';
+  const txt = advice.reasons.map(r => `${r.label} ${r.from}${r.unit} → ${r.to}${r.unit}`).join(', ');
+  return `<div class="body-nudge"><b>Your numbers have changed.</b> ${txt}. Your calories and macros are built from them, so an update will keep your plan accurate. <button type="button" class="nudge-btn" onclick="openPlanUpdate()">Update my plan</button></div>`;
+}
+
+function renderBodyCard() {
+  const el = document.getElementById('body-card'); if (!el || !window.HFBody) return;
+  const ctx = bodyCtx(), entries = appState.measurements || [], tr = HFBody.trend(entries);
+  const prog = HFBody.goalProgress(appState.targets, entries), due = HFBody.checkinDue(entries, todayStr());
+  const advice = HFBody.planChangeAdvice(ctx.meta, entries);
+  const sub = tr ? `${kgTxt(tr.weightNow)}${tr.bfNow != null ? ' · ' + pctTxt(tr.bfNow) + ' body fat' : ''}` : 'Log your weight to start tracking your progress';
+  el.innerHTML = `<div class="body-card">
+    <div class="body-card-head"><div><div class="body-card-title">Body</div><div class="body-card-sub">${sub}</div></div><button type="button" class="btn-outline body-log-btn" onclick="openBodyModal()">Log weight</button></div>
+    ${prog && prog.any ? `<div class="goal-rows">${goalBarsHtml(prog)}</div>` : ''}
+    ${adviceHtml(advice)}${underweightHtml(ctx, tr)}
+    ${entries.length && due.due ? `<div class="body-hint">It has been ${due.days} days since your last weigh-in. A weekly check-in keeps your plan accurate.</div>` : ''}
+    ${entries.length ? '<button type="button" class="body-link" onclick="showBody()">See my body progress →</button>' : ''}
+  </div>`;
+}
+
+// ── charts ──
+function chartSvg(entries, key, target, label, unit) {
+  const cd = HFBody.chartData(entries, key, target);
+  if (!cd || cd.points.length < 2) return '';
+  const grid = cd.yTicks.map(t => `<line x1="${cd.m.l}" x2="${cd.w - cd.m.r}" y1="${t.y}" y2="${t.y}" class="ch-grid"/><text x="${cd.m.l - 6}" y="${t.y + 4}" class="ch-y" text-anchor="end">${t.label}</text>`).join('');
+  const xs = cd.xTicks.map((t, i) => `<text x="${t.x}" y="${cd.h - 8}" class="ch-x" text-anchor="${i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}">${t.label}</text>`).join('');
+  const goal = cd.targetY != null ? `<line x1="${cd.m.l}" x2="${cd.w - cd.m.r}" y1="${cd.targetY}" y2="${cd.targetY}" class="ch-goal"/><text x="${cd.w - cd.m.r}" y="${cd.targetY - 5}" class="ch-goal-label" text-anchor="end">Goal ${r1n(target)}${unit}</text>` : '';
+  const dots = cd.points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.6" class="ch-dot"><title>${p.d}: ${p.v}${unit}</title></circle>`).join('');
+  return `<div class="chart-card"><div class="chart-title">${label}</div><svg viewBox="0 0 ${cd.w} ${cd.h}" class="chart" role="img" aria-label="${label} over time">${grid}${xs}${goal}<path d="${cd.avgPath}" class="ch-avg"/>${dots}</svg><div class="chart-legend"><span><i class="lg-dot"></i> each weigh-in</span><span><i class="lg-line"></i> 7-day trend</span>${cd.targetY != null ? '<span><i class="lg-goal"></i> goal</span>' : ''}</div></div>`;
+}
+
+function renderHistoryBody() {
+  const el = document.getElementById('hist-body'); if (!el) return;
+  const entries = appState.measurements || [], ctx = bodyCtx(), t = appState.targets;
+  const actions = `<div class="body-actions"><button type="button" class="btn-primary" onclick="openBodyModal()">Log weight</button><button type="button" class="btn-outline" onclick="openGoalModal()">${t ? 'Edit goal' : 'Set a goal'}</button></div>`;
+  if (!entries.length) {
+    el.innerHTML = actions + '<div class="hist-empty"><div class="hist-empty-title">No measurements yet</div><p>Log your weight (and body fat if you know it) to see your trend, set a goal, and know when to update your plan.</p></div>';
+    return;
+  }
+  const tr = HFBody.trend(entries), prog = HFBody.goalProgress(t, entries), advice = HFBody.planChangeAdvice(ctx.meta, entries);
+  const card = (label, val, sub) => `<div class="hist-stat"><div class="hist-stat-label">${label}</div><div class="hist-stat-val">${val}</div><div class="hist-stat-unit">${sub || '&nbsp;'}</div></div>`;
+  let rate = '';
+  if (tr.ratePerWeek != null) {
+    const pw = (100 * tr.ratePerWeek) / tr.weightNow;
+    rate = `<p class="body-rate">Trend: <b>${deltaTxt(tr.ratePerWeek, ' kg')}</b> per week over the last 4 weeks.` + (pw <= -1 ? ' That is faster than the usual 0.5–1% of body weight a week, which can cost muscle and energy. Consider updating your plan.' : pw >= 0.5 ? ' Gaining faster than about 0.5% of body weight a week usually adds more fat than muscle.' : '') + '</p>';
+  }
+  const reached = t && t.reachedAt ? `<div class="body-nudge good"><b>Goal reached on ${t.reachedAt}.</b> Well done. Set a new goal or update your plan to match your new body. <button type="button" class="nudge-btn" onclick="openPlanUpdate()">Update my plan</button> <button type="button" class="nudge-btn alt" onclick="openGoalModal()">Set a new goal</button></div>` : '';
+  const list = [...entries].reverse().slice(0, 30).map(e => `<div class="body-row"><span class="br-date">${e.d}</span><span>${e.w} kg</span><span>${e.bf != null ? e.bf + '%' : '—'}</span><span>${e.wa != null ? e.wa + ' cm' : '—'}</span><button type="button" class="br-del" aria-label="Delete entry ${e.d}" onclick="deleteBodyEntry('${e.d}')">✕</button></div>`).join('');
+  el.innerHTML = actions + reached + adviceHtml(advice) + underweightHtml(ctx, tr)
+    + `<div class="hist-stats body-stats">${card('Weight (trend)', kgTxt(tr.weightNow), tr.weightChange != null ? deltaTxt(tr.weightChange, ' kg') + ' since you started' : '')}${card('Body fat (trend)', pctTxt(tr.bfNow), tr.bfChange != null ? deltaTxt(tr.bfChange, ' points') + ' since you started' : 'optional')}${card('Waist', tr.waistNow != null ? r1n(tr.waistNow) + ' cm' : '—', 'optional')}${card('Entries', tr.count, 'over ' + tr.spanDays + ' days')}</div>`
+    + (prog && prog.any ? `<div class="goal-rows card-like">${goalBarsHtml(prog)}</div>` : '')
+    + rate
+    + chartSvg(entries, 'w', t && t.weight, 'Weight (kg)', ' kg') + chartSvg(entries, 'bf', t && t.bf, 'Body fat (%)', '%') + chartSvg(entries, 'wa', null, 'Waist (cm)', ' cm')
+    + `<div class="body-list"><div class="body-row body-row-head"><span>Date</span><span>Weight</span><span>Body fat</span><span>Waist</span><span></span></div>${list}</div>`;
+}
+function showBody() { histTab = 'body'; showHistory(); }
+function refreshBodyViews() {
+  renderBodyCard();
+  const hp = document.getElementById('page-history'); if (hp && hp.classList.contains('active') && histTab === 'body') renderHistoryBody();
+}
+
+// ── log a measurement ──
+function showFieldErrors(prefix, errors) {
+  ['date', 'weight', 'bf', 'waist', 'general'].forEach(k => { const el = document.getElementById(prefix + k); if (el) { el.textContent = errors[k] || ''; el.hidden = !errors[k]; } });
+}
+function openBodyModal() {
+  const entries = appState.measurements || [], lw = HFBody.latestOf(entries, 'w'), lb = HFBody.latestOf(entries, 'bf'), la = HFBody.latestOf(entries, 'wa');
+  document.getElementById('bm-date').value = todayStr(); document.getElementById('bm-date').max = todayStr();
+  document.getElementById('bm-weight').value = lw ? lw.w : ''; document.getElementById('bm-bf').value = lb ? lb.bf : ''; document.getElementById('bm-waist').value = la ? la.wa : '';
+  showFieldErrors('bm-err-', {});
+  document.getElementById('body-modal').classList.add('open');
+  const w = document.getElementById('bm-weight'); w.focus(); w.select();
+}
+function closeBodyModal() { document.getElementById('body-modal').classList.remove('open'); }
+function saveBodyEntry() {
+  const entries = appState.measurements || [];
+  const res = HFBody.validateEntry({ date: document.getElementById('bm-date').value, weight: document.getElementById('bm-weight').value, bf: document.getElementById('bm-bf').value, waist: document.getElementById('bm-waist').value }, { today: todayStr(), entries });
+  showFieldErrors('bm-err-', res.errors);
+  if (!res.ok) return;
+  if (res.warnings.length && !confirm(res.warnings.join(' ') + '\n\nSave it anyway?')) return;
+  appState.measurements = HFBody.upsert(entries, res.entry); touch();
+  closeBodyModal(); refreshBodyViews(); showToast('Saved.'); checkGoalReached();
+}
+function deleteBodyEntry(d) {
+  if (!confirm(`Delete your entry for ${d}?`)) return;
+  appState.measurements = HFBody.remove(appState.measurements, d); touch(); refreshBodyViews(); showToast('Entry deleted.');
+}
+
+// ── goals ──
+function openGoalModal() {
+  const t = appState.targets;
+  document.getElementById('gm-weight').value = t && t.weight != null ? t.weight : ''; document.getElementById('gm-bf').value = t && t.bf != null ? t.bf : '';
+  document.getElementById('gm-remove').hidden = !t; showFieldErrors('gm-err-', {});
+  document.getElementById('goal-modal').classList.add('open'); document.getElementById('gm-weight').focus();
+}
+function closeGoalModal() { document.getElementById('goal-modal').classList.remove('open'); }
+function saveGoal() {
+  const entries = appState.measurements || [], ctx = bodyCtx();
+  const res = HFBody.checkTargets({ weight: document.getElementById('gm-weight').value, bf: document.getElementById('gm-bf').value }, { gender: ctx.gender, heightCm: ctx.heightCm });
+  if (res.ok && !entries.length) { res.ok = false; res.errors = { general: 'Log your current weight first, so we can track your progress toward the goal.' }; }
+  showFieldErrors('gm-err-', res.errors);
+  if (!res.ok) return;
+  appState.targets = HFBody.makeTargets(res.targets, entries, todayStr()); touch();
+  closeGoalModal(); refreshBodyViews(); showToast('Goal saved.'); checkGoalReached();
+}
+function removeGoal() { appState.targets = null; touch(); closeGoalModal(); refreshBodyViews(); showToast('Goal removed.'); }
+
+function checkGoalReached() {
+  const t = appState.targets; if (!t || t.reachedAt) return;
+  const prog = HFBody.goalProgress(t, appState.measurements || []);
+  if (prog && prog.reached) { t.reachedAt = todayStr(); touch(); refreshBodyViews(); showGoalCelebration(prog); }
+}
+function showGoalCelebration(prog) {
+  const chips = [];
+  if (prog.weight) chips.push(`Weight ${r1n(prog.weight.start)} → ${r1n(prog.weight.now)} kg`);
+  if (prog.bf) chips.push(`Body fat ${r1n(prog.bf.start)}% → ${r1n(prog.bf.now)}%`);
+  document.getElementById('celebrate-kicker').textContent = 'Goal reached';
+  document.getElementById('celebrate-title').innerHTML = 'Goal <em>reached.</em>';
+  document.getElementById('celebrate-msg').textContent = 'You hit the target you set. That took weeks of showing up, and it is worth being proud of.';
+  document.getElementById('celebrate-chips').innerHTML = chips.map(c => `<span class="celebrate-chip">${escapeAttr(c)}</span>`).join('');
+  document.getElementById('celebrate-streak').textContent = 'Update your plan so your calories and macros match your new body.';
+  const sec = document.getElementById('celebrate-secondary'); sec.textContent = 'Update my plan'; sec.onclick = () => { closeCelebration(); openPlanUpdate(); };
+  document.getElementById('celebrate-modal').classList.add('open');
+  const btn = document.getElementById('celebrate-close'); if (btn) btn.focus();
+  launchConfetti();
+}
+
+// ── rebuild the plan from the latest numbers ──
+// Opens the intake form pre-filled. The health check is always asked again: health changes, and it keeps the plan safe.
+function openPlanUpdate() {
+  closeBodyModal(); closeGoalModal(); closeCelebration();
+  const ctx = bodyCtx(), m = ctx.meta, p = m.profile || {}, tr = window.HFBody ? HFBody.trend(appState.measurements || []) : null;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = v; };
+  setGender(p.gender || genderVal);
+  set('f-age', p.age); set('f-height', p.height);
+  set('f-weight', tr && tr.weightNow != null ? r1n(tr.weightNow) : (p.weight != null ? p.weight : m.weightKg));
+  const bf = tr && tr.bfNow != null ? tr.bfNow : p.bf != null ? p.bf : (m.leanMassKg && m.weightKg ? Math.round(100 * (1 - m.leanMassKg / m.weightKg)) : null);
+  set('f-bf', bf != null ? r1n(bf) : '');
+  set('f-freq', p.freq != null ? String(p.freq) : m.freq != null ? String(m.freq) : null); set('f-exp', p.exp);
+  set('f-sleep', p.sleep != null ? String(p.sleep) : null); set('f-stress', p.stress);
+  let goalVal = p.goal || m.goal;
+  const reached = !!(appState.targets && appState.targets.reachedAt);
+  if (reached && ['fat loss', 'muscle gain'].includes(goalVal)) goalVal = 'recomposition';
+  set('f-goal', goalVal); set('f-diet', p.diet || m.diet);
+  const al = p.allerg || m.allerg; set('f-allergies', al && al !== 'none' ? al : '');
+  set('f-cycle', p.cycle);
+  document.querySelectorAll('#intake-card input[type=checkbox]').forEach(c => { c.checked = false; });
+  const b = document.getElementById('update-banner');
+  b.innerHTML = `<b>Updating your plan.</b> We have filled in your latest numbers${reached ? ' and suggested a maintenance goal now that you have reached yours' : ''}. Check them, tick anything that applies in the health check (we always ask again, because health can change), then generate your plan. Your history stays.`;
+  b.hidden = false;
+  showPage('page-dashboard'); resetPlan();
+  if (typeof saveFormDraft === 'function') saveFormDraft();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeBodyModal(); closeGoalModal(); } });
+
 // ══════════════════════════════════════════════
 // FORGOT / RESET PASSWORD
 // ══════════════════════════════════════════════
@@ -1348,6 +1541,8 @@ function downloadMyData() {
     progress: appState.progress,
     logs: appState.logs,
     history: appState.history,
+    measurements: appState.measurements,
+    targets: appState.targets,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

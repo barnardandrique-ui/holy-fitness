@@ -136,5 +136,27 @@ const appHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8
 check('swaps: the swap dialog and Swap buttons are wired into the app', /id="swap-modal"/.test(appHtml) && /openSwap\(/.test(appJs) && /import\('\/lib\/planner\/swaps\.js'\)/.test(appJs));
 check('swaps: the server keeps deep meal data and the avoid list when saving', /depth > 12/.test(stateJs) && /avoidFoods/.test(stateJs));
 
+
+// ── Body measurements, goals and plan updates (js/body.js) ──
+const bctx = {}; bctx.globalThis = bctx; vm.createContext(bctx);
+vm.runInContext(fs.readFileSync(new URL('../js/body.js', import.meta.url), 'utf8'), bctx);
+const BD = bctx.HFBody; const bToday = '2026-10-26';
+const okEntry = w => BD.validateEntry({ date: bToday, weight: w }, { today: bToday, entries: [] }).ok;
+check('body: a normal weight is accepted; impossible weights, junk and a future date are refused', okEntry('82.5') && !okEntry('12') && !okEntry('900') && !okEntry('abc') && !BD.validateEntry({ date: '2026-10-27', weight: '80' }, { today: bToday }).ok);
+check('body: goals below BMI 18.5 are refused (we never help someone aim that low)', !BD.checkTargets({ weight: '55' }, { gender: 'male', heightCm: 180 }).ok && BD.checkTargets({ weight: '75' }, { gender: 'male', heightCm: 180 }).ok);
+check('body: body-fat goals below the safe floors (men 6%, women 14%) are refused', !BD.checkTargets({ bf: '5' }, { gender: 'male' }).ok && !BD.checkTargets({ bf: '13' }, { gender: 'female' }).ok && BD.checkTargets({ bf: '14' }, { gender: 'female' }).ok);
+const gT = { weight: 80, bf: null, startWeight: 90, startBf: null };
+check('body: one lucky low weigh-in does NOT reach a goal (the 7-day trend decides)', BD.goalProgress(gT, [{ d: '2026-10-21', w: 82 }, { d: '2026-10-23', w: 82.4 }, { d: '2026-10-26', w: 79.5 }]).reached === false);
+check('body: a sustained trend at the target does reach it (losing and gaining)', BD.goalProgress(gT, [{ d: '2026-10-23', w: 79.9 }, { d: '2026-10-26', w: 79.8 }]).reached === true && BD.goalProgress({ weight: 85, bf: null, startWeight: 78, startBf: null }, [{ d: '2026-10-24', w: 85.1 }, { d: '2026-10-26', w: 85.3 }]).reached === true);
+const bMeta = { weightKg: 84, profile: { weight: 84, bf: 16 } };
+check('body: the plan is flagged for an update after about 3% weight or 2 points of body fat, not before', BD.planChangeAdvice(bMeta, [{ d: bToday, w: 82.8, bf: 15.2 }]) === null && BD.planChangeAdvice(bMeta, [{ d: bToday, w: 81.4 }]) !== null && BD.planChangeAdvice(bMeta, [{ d: bToday, w: 84, bf: 13.9 }]) !== null);
+const profileKeys = ['age', 'allerg', 'bf', 'cycle', 'diet', 'exp', 'freq', 'gender', 'goal', 'height', 'sleep', 'stress', 'weight'];
+check('body: a plan keeps a snapshot of exactly the approved non-health numbers, and nothing else', plain.meta.profile && Object.keys(plain.meta.profile).sort().join() === profileKeys.join());
+check('body: plan metadata holds only approved fields (a new field must be added here on purpose, so nothing sensitive slips in)', Object.keys(plain.meta).sort().join() === 'allerg,avoid,bmr,diet,engine,ffmi,freq,goal,leanMassKg,maintenance,mode,profile,seed,targetKcal,weightKg');
+const healthPlan = generatePlan({ gender: 'male', age: 40, height: 180, weight: 90, bf: 22, freq: '3', exp: 'beginner', goal: 'fat loss', diet: 'standard', health: { joints: true, bloodPressure: true, otherCondition: true } }, { seed: 5 });
+check('body: even when health boxes are ticked, no health answers are kept in the plan metadata', !healthPlan.blocked && !/joints|bloodPressure|otherCondition|health/i.test(JSON.stringify(healthPlan.meta)));
+check('body: the server validates measurements and goals', /cleanMeasurements/.test(stateJs) && /w < 30 \|\| w > 300/.test(stateJs) && /cleanTargets/.test(stateJs) && /out\.measurements/.test(stateJs));
+check('body: updating a plan always asks the health check again, and the Body tab and dialogs are wired in', /function openPlanUpdate/.test(appJs) && /input\[type=checkbox\]'\)\.forEach\(c => \{ c\.checked = false; \}\)/.test(appJs) && /id="body-modal"/.test(appHtml) && /id="goal-modal"/.test(appHtml) && /id="htab-body"/.test(appHtml));
+
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);

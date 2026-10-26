@@ -50,6 +50,31 @@ function cleanHistory(arr) {
   return list.slice(-730);
 }
 
+// Body measurements the client chose to log: { d: 'YYYY-MM-DD', w: kg, bf?: %, wa?: cm }. Everything is range-checked.
+function cleanMeasurements(arr) {
+  if (!Array.isArray(arr)) return [];
+  const byDate = new Map();
+  for (const e of arr.slice(0, 1500)) {
+    if (!e || typeof e !== 'object') continue;
+    const d = clean(e.d, 10); const w = Number(e.w);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Number.isFinite(w) || w < 30 || w > 300) continue;
+    const entry = { d, w: Math.round(w * 10) / 10 };
+    const bf = e.bf == null ? NaN : Number(e.bf), wa = e.wa == null ? NaN : Number(e.wa);
+    if (Number.isFinite(bf) && bf >= 3 && bf <= 60) entry.bf = Math.round(bf * 10) / 10;
+    if (Number.isFinite(wa) && wa >= 40 && wa <= 200) entry.wa = Math.round(wa * 2) / 2;
+    byDate.set(d, entry);
+  }
+  return [...byDate.values()].sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0)).slice(-1000);
+}
+function cleanTargets(t) {
+  if (!t || typeof t !== 'object') return null;
+  const num = (v, lo, hi) => { const n = Number(v); return v != null && Number.isFinite(n) && n >= lo && n <= hi ? Math.round(n * 10) / 10 : null; };
+  const date = v => (/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : null);
+  const weight = num(t.weight, 30, 300), bf = num(t.bf, 3, 60);
+  if (weight == null && bf == null) return null;
+  return { weight, bf, startWeight: num(t.startWeight, 30, 300), startBf: num(t.startBf, 3, 60), startDate: date(t.startDate), setAt: date(t.setAt), reachedAt: date(t.reachedAt) };
+}
+
 function cleanState(s) {
   if (!s || typeof s !== 'object') return null;
   const out = {};
@@ -77,6 +102,8 @@ function cleanState(s) {
   out.planId = typeof s.planId === 'string' ? s.planId.replace(/[^\w:-]/g, '').slice(0, 40) || null : null;
   out.history = cleanHistory(s.history);
   // Foods the client asked never to see again (ids only).
+  out.measurements = cleanMeasurements(s.measurements);
+  out.targets = cleanTargets(s.targets);
   out.avoidFoods = Array.isArray(s.avoidFoods) ? [...new Set(s.avoidFoods.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 40) : [];
 
   out.updatedAt = Number.isFinite(Number(s.updatedAt)) ? Number(s.updatedAt) : Date.now();

@@ -80,6 +80,19 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Body measurements, goals and plan updates (js/body.js)
+
+`appState.measurements` = `[{ d, w (kg), bf?, wa? }]` (one per date, max 1000) and `appState.targets` = `{ weight, bf, startWeight, startBf, startDate, setAt, reachedAt }`;
+both sync via /api/state (validated in `cleanMeasurements` / `cleanTargets`). UI: History > Body tab (charts with a 7-day trend line, goal bars, entry list),
+a Body card on Today, log + goal dialogs. Pure logic is in `js/body.js` (tested with node `vm`). Key rules, do not weaken:
+- Daily weight bounces, so goals are judged on the 7-DAY TREND, never on a single weigh-in.
+- Goals below BMI 18.5 (using the plan's stored height) or below body-fat floors (men 6%, women 14%) are REFUSED with a doctor/dietitian message.
+- Underweight readings show a caring note; fast loss (>=1% of body weight a week) gets an information note. Never celebrate or shame.
+- `plan.meta.profile` stores the NON-health numbers a plan was built from (gender, age, height, weight, bf, freq, exp, sleep, stress, goal, diet,
+  allerg, cycle) so "Update my plan" can pre-fill the intake form. HEALTH ANSWERS ARE NEVER STORED and the health check is ALWAYS asked again.
+- A plan is flagged for an update after >= max(2 kg, 3%) weight change or >= 2 points body fat versus the numbers it was built from, or when a goal is reached
+  (then a maintenance goal is suggested). Updating regenerates the plan via the normal intake; history and measurements are kept.
+
 ## Food swaps ("can't eat it" / "too expensive" / "hard to find")
 
 Every generated meal carries `type` (breakfast/main/snack) and `items: [[foodId, grams, text], ...]` next to the old `foods` text.

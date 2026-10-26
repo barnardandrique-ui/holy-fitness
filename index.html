@@ -249,6 +249,8 @@
         </button>
       </div>
 
+      <div id="body-card"></div>
+
       <button class="btn-generate" style="margin-top:24px;" onclick="advanceDay()" id="advance-day-btn">
         Mark Day Complete &amp; Continue →
       </button>
@@ -341,6 +343,7 @@
     </div>
 
     <div class="intake-card" id="intake-card">
+      <div class="update-banner" id="update-banner" hidden></div>
       <div class="intake-title">Your <span>profile</span></div>
       <div class="intake-subtitle">Every field shapes your plan. The more accurate, the better the output.</div>
 
@@ -527,10 +530,12 @@
       <button class="hist-tab active" id="htab-days" role="tab" onclick="setHistoryTab('days')">Days</button>
       <button class="hist-tab" id="htab-weeks" role="tab" onclick="setHistoryTab('weeks')">Weeks</button>
       <button class="hist-tab" id="htab-months" role="tab" onclick="setHistoryTab('months')">Months</button>
+      <button class="hist-tab" id="htab-body" role="tab" onclick="setHistoryTab('body')">Body</button>
     </div>
     <div id="hist-days" class="hist-panel"></div>
     <div id="hist-weeks" class="hist-panel" style="display:none;"></div>
     <div id="hist-months" class="hist-panel" style="display:none;"></div>
+    <div id="hist-body" class="hist-panel" style="display:none;"></div>
     <div class="hist-legend" id="hist-legend">
       <span><i class="lg perfect"></i> Every target hit</span><span><i class="lg part"></i> Some targets hit</span><span><i class="lg miss"></i> Logged, none hit</span><span><i class="lg none"></i> Nothing logged</span>
     </div>
@@ -549,7 +554,7 @@
     <div class="celebrate-streak" id="celebrate-streak"></div>
     <div class="celebrate-actions">
       <button class="btn-primary" id="celebrate-close" onclick="closeCelebration()">Keep going</button>
-      <button class="btn-outline-light" onclick="closeCelebration(); showHistory();">See my progress</button>
+      <button class="btn-outline-light" id="celebrate-secondary" onclick="closeCelebration(); showHistory();">See my progress</button>
     </div>
   </div>
   <canvas id="confetti-canvas" aria-hidden="true"></canvas>
@@ -623,8 +628,35 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="body-modal" role="dialog" aria-modal="true" aria-labelledby="body-title">
+  <div class="modal">
+    <button class="modal-close" onclick="closeBodyModal()" aria-label="Close">✕</button>
+    <div class="modal-headline" id="body-title">Log your <span>numbers</span></div>
+    <p class="modal-sub">For the most useful trend, weigh in at a similar time each time, such as in the morning before eating.</p>
+    <div class="form-group"><label for="bm-date">Date</label><input type="date" id="bm-date" /><div class="field-error" id="bm-err-date" hidden></div></div>
+    <div class="form-group"><label for="bm-weight">Weight (kg)</label><input type="text" inputmode="decimal" id="bm-weight" placeholder="82.5" autocomplete="off" /><div class="field-error" id="bm-err-weight" hidden></div></div>
+    <div class="form-group"><label for="bm-bf">Body fat % <small>(optional)</small></label><input type="text" inputmode="decimal" id="bm-bf" placeholder="16" autocomplete="off" /><div class="field-error" id="bm-err-bf" hidden></div></div>
+    <div class="form-group"><label for="bm-waist">Waist (cm) <small>(optional)</small></label><input type="text" inputmode="decimal" id="bm-waist" placeholder="86" autocomplete="off" /><div class="field-error" id="bm-err-waist" hidden></div></div>
+    <button class="btn-modal-submit" onclick="saveBodyEntry()">Save</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="goal-modal" role="dialog" aria-modal="true" aria-labelledby="goal-title">
+  <div class="modal">
+    <button class="modal-close" onclick="closeGoalModal()" aria-label="Close">✕</button>
+    <div class="modal-headline" id="goal-title">Set your <span>goal</span></div>
+    <p class="modal-sub" id="goal-sub">Pick a target weight, a target body fat, or both. We track progress on your 7-day trend, so one odd weigh-in can't fool it.</p>
+    <div class="form-group"><label for="gm-weight">Target weight (kg)</label><input type="text" inputmode="decimal" id="gm-weight" placeholder="78" autocomplete="off" /><div class="field-error" id="gm-err-weight" hidden></div></div>
+    <div class="form-group"><label for="gm-bf">Target body fat % <small>(optional)</small></label><input type="text" inputmode="decimal" id="gm-bf" placeholder="14" autocomplete="off" /><div class="field-error" id="gm-err-bf" hidden></div></div>
+    <div class="field-error" id="gm-err-general" hidden></div>
+    <button class="btn-modal-submit" onclick="saveGoal()">Save goal</button>
+    <button class="btn-modal-submit btn-secondary" id="gm-remove" onclick="removeGoal()" style="margin-top:10px;" hidden>Remove goal</button>
+  </div>
+</div>
+
 <script src="/js/progress.js"></script>
 <script src="/js/install.js"></script>
+<script src="/js/body.js"></script>
 <script src="/js/exercise-links.js"></script>
 <script src="/js/training.js"></script>
 <script src="/js/app.js"></script>

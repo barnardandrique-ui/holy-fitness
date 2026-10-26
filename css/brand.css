@@ -449,3 +449,51 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .swap-opts input { width: 18px; height: 18px; accent-color: var(--red); }
 .swap-foot { color: var(--gray-mid); font-size: 0.74rem; line-height: 1.5; margin-top: 6px; }
 @media (max-width: 560px) { .swap-modal { padding: 34px 16px 18px; } .swap-card { flex-direction: column; align-items: stretch; } .swap-choose { width: 100%; } .swap-list { max-height: none; } }
+
+/* ============================================================================
+   Body measurements, goals, charts
+   ============================================================================ */
+.body-card { background: var(--white); border: 1px solid var(--gray-light); border-radius: 12px; padding: 16px 18px; margin-top: 18px; }
+.body-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.body-card-title { font-family: var(--font-label); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.74rem; color: var(--gold-deep); }
+.body-card-sub { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; margin-top: 2px; }
+.body-log-btn { padding: 9px 16px; font-size: 0.78rem; white-space: nowrap; }
+.goal-rows { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.goal-rows.card-like { background: var(--white); border: 1px solid var(--gray-light); border-radius: 12px; padding: 14px 16px; margin: 0 0 16px; }
+.goal-row-head { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 5px; color: var(--gray-mid); }
+.goal-row-head span:first-child { color: var(--black); font-weight: 600; }
+.goal-bar { height: 8px; background: #EFEAE0; border-radius: 99px; overflow: hidden; }
+.goal-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--red), var(--gold)); border-radius: 99px; }
+.body-nudge { background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 10px; padding: 11px 14px; font-size: 0.84rem; line-height: 1.55; color: #55431b; margin-top: 12px; }
+.body-nudge.care { background: #FFF2F0; border-color: #F3C3BB; color: #7a2a1f; }
+.body-nudge.good { background: #EAF5E6; border-color: #BFDDB6; color: #2c5a22; }
+.nudge-btn { display: inline-block; margin: 6px 6px 0 0; background: var(--black); color: var(--gold); border: none; border-radius: 6px; padding: 8px 14px; font-family: var(--font-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.72rem; cursor: pointer; }
+.nudge-btn.alt { background: transparent; color: var(--black); border: 1.5px solid var(--black); }
+.body-hint { margin-top: 10px; font-size: 0.8rem; color: var(--gray-mid); }
+.body-link { display: block; margin-top: 10px; background: none; border: none; color: var(--red); font-weight: 600; font-size: 0.86rem; cursor: pointer; padding: 0; text-decoration: underline; }
+.body-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.body-stats { margin-top: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.body-rate { font-size: 0.86rem; color: var(--gray-mid); line-height: 1.6; margin-bottom: 14px; }
+.chart-card { background: var(--white); border: 1px solid var(--gray-light); border-radius: 12px; padding: 14px 14px 10px; margin-bottom: 16px; }
+.chart-title { font-family: var(--font-label); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.76rem; color: var(--gold-deep); margin: 0 0 6px 6px; }
+.chart { width: 100%; height: auto; display: block; }
+.ch-grid { stroke: #ECE6DA; stroke-width: 1; } .ch-y, .ch-x { fill: #8a8478; font-size: 11px; font-family: var(--font-label); }
+.ch-avg { fill: none; stroke: var(--black); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+.ch-dot { fill: var(--gold); stroke: var(--white); stroke-width: 1.2; }
+.ch-goal { stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 6 5; } .ch-goal-label { fill: var(--red); font-size: 11px; font-weight: 700; font-family: var(--font-label); }
+.chart-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.74rem; color: var(--gray-mid); margin: 2px 6px 0; }
+.lg-dot, .lg-line, .lg-goal { display: inline-block; vertical-align: middle; margin-right: 5px; }
+.lg-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); } .lg-line { width: 18px; height: 3px; background: var(--black); border-radius: 2px; } .lg-goal { width: 18px; border-top: 2px dashed var(--red); }
+.body-list { background: var(--white); border: 1px solid var(--gray-light); border-radius: 12px; overflow: hidden; }
+.body-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 34px; gap: 6px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--gray-light); font-size: 0.86rem; }
+.body-row:last-child { border-bottom: none; } .body-row-head { font-family: var(--font-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.7rem; color: var(--gold-deep); background: #FAF7F0; }
+.br-del { background: none; border: none; color: var(--gray-mid); cursor: pointer; font-size: 0.9rem; } .br-del:hover { color: var(--red); }
+.field-error { color: #b3261e; font-size: 0.8rem; margin-top: 5px; line-height: 1.45; }
+.update-banner { background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 10px; padding: 12px 16px; font-size: 0.86rem; line-height: 1.6; color: #55431b; margin-bottom: 18px; }
+@media (max-width: 560px) { .body-row { grid-template-columns: 1.5fr 1fr 1fr 1fr 28px; padding: 9px 10px; font-size: 0.8rem; } .body-card-head { flex-wrap: wrap; } }
+
+/* History tabs now have four entries: let them share the row on phones instead of overflowing */
+@media (max-width: 640px) {
+  .hist-tabs { width: 100%; }
+  .hist-tab { flex: 1 1 0; padding: 10px 4px; font-size: 0.76rem; letter-spacing: 0.08em; text-align: center; }
+}
