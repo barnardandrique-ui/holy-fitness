@@ -10,7 +10,7 @@ const MAX_BYTES = 500 * 1024;
 // Removes HTML tags from every string inside a value (works value-by-value, so it
 // can never damage the JSON structure itself).
 function scrub(v, depth = 0) {
-  if (depth > 6) return null;
+  if (depth > 12) return null;      // meals now hold ingredient lists (plan > days > nutrition > meals > meal > items > item), so allow some depth
   if (typeof v === 'string') return v.replace(/<[^>]*>/g, '').replace(/[<>]/g, '');
   if (Array.isArray(v)) return v.slice(0, 100).map(x => scrub(x, depth + 1));
   if (v && typeof v === 'object') {
@@ -76,6 +76,8 @@ function cleanState(s) {
 
   out.planId = typeof s.planId === 'string' ? s.planId.replace(/[^\w:-]/g, '').slice(0, 40) || null : null;
   out.history = cleanHistory(s.history);
+  // Foods the client asked never to see again (ids only).
+  out.avoidFoods = Array.isArray(s.avoidFoods) ? [...new Set(s.avoidFoods.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 40) : [];
 
   out.updatedAt = Number.isFinite(Number(s.updatedAt)) ? Number(s.updatedAt) : Date.now();
   return out;

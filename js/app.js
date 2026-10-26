@@ -14,7 +14,7 @@ let resetToken = null;
 // drops, and is re-synced the next time the app loads.
 // ══════════════════════════════════════════════
 function defaultState() {
-  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], updatedAt: 0 };
+  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], avoidFoods: [], updatedAt: 0 };
 }
 let appState = defaultState();
 let persistTimer = null;
@@ -91,6 +91,7 @@ async function loadState() {
   if (!chosen) chosen = migrateLegacyState();
   appState = { ...defaultState(), ...(chosen || {}) };
   if (!Array.isArray(appState.history)) appState.history = [];
+  if (!Array.isArray(appState.avoidFoods)) appState.avoidFoods = [];
   if (appState.plan && !appState.planId) appState.planId = 'p' + ((appState.plan.meta && appState.plan.meta.seed) || '0');
   if (chosen && chosen !== server) { writeCache(); persistState(); }
 }
@@ -439,6 +440,7 @@ async function generatePlan() {
     allerg: document.getElementById('f-allergies').value || 'none',
     cycle: genderVal === 'female' ? document.getElementById('f-cycle').value : 'N/A',
     health: collectHealth(),
+    avoid: appState.avoidFoods || [],
   };
 
   // Show loading
@@ -509,7 +511,7 @@ function setWelcomeBanner(show) {
   if (h) h.style.display = show ? '' : 'none';
 }
 
-function renderPlan(plan, goal) {
+function renderPlan(plan, goal, opts = {}) {
   setWelcomeBanner(false);
   const ov = plan.overview;
   const days = plan.days;
@@ -575,12 +577,15 @@ function renderPlan(plan, goal) {
   }).join('');
 
   // Nutrition days
-  document.getElementById('nutrition-days').innerHTML = days.map(d => {
-    const mealRows = (d.nutrition.meals || []).map(m => `
+  renderNutritionTools(plan);
+  document.getElementById('nutrition-days').innerHTML = days.map((d, di) => {
+    const mealRows = (d.nutrition.meals || []).map((m, mi) => `
       <div class="meal-row">
-        <div>
-          <div class="meal-name">${m.time} — ${m.name}</div>
-          <div style="font-size:0.82rem;color:#555;margin-top:3px;">${m.foods}</div>
+        <div class="meal-main">
+          <div class="meal-name">${m.time} — ${escapeAttr(m.name)}${m.orig ? ` <span class="swap-badge">Swapped · <button type="button" class="swap-undo" onclick="undoSwap(${di},${mi})">Undo</button></span>` : ''}</div>
+          ${Array.isArray(m.items) && m.items.length
+            ? `<div class="meal-items">${m.items.map((it, ii) => `<div class="meal-item"><span>${escapeAttr(it[2])}</span><button type="button" class="swap-btn" onclick="openSwap(${di},${mi},${ii})" aria-label="Swap ${escapeAttr(it[2])}">Swap</button></div>`).join('')}</div>`
+            : `<div style="font-size:0.82rem;color:#555;margin-top:3px;">${m.foods}</div>`}
         </div>
         <div class="meal-macros" style="text-align:right;white-space:nowrap;margin-left:16px;">
           ${m.calories} kcal<br/>${m.protein}P · ${m.carbs}C · ${m.fats}F
@@ -624,7 +629,7 @@ function renderPlan(plan, goal) {
   `;
 
   document.getElementById('plan-output').classList.add('show');
-  document.getElementById('plan-output').scrollIntoView({ behavior: 'smooth' });
+  if (!opts.keepScroll) document.getElementById('plan-output').scrollIntoView({ behavior: 'smooth' });
 }
 
 function resetPlan() {
@@ -1149,6 +1154,111 @@ function renderHistoryMonth() {
 }
 function histMonthNav(d) { let y = histMonth.y, mo = histMonth.m + d; if (mo < 1) { mo = 12; y--; } if (mo > 12) { mo = 1; y++; } histMonth = { y, m: mo }; histPicked = null; renderHistoryMonth(); }
 function histPick(date) { histPicked = date; renderHistoryMonth(); }
+
+
+// ══════════════════════════════════════════════
+// FOOD SWAPS - "I can't eat it" / "too expensive" / "hard to find"
+// The swap rules live in /lib/planner/swaps.js (loaded only when someone opens a swap).
+// ══════════════════════════════════════════════
+let swapCtx = null;
+function loadSwaps() { return (window.__loadSwaps || (() => import('/lib/planner/swaps.js')))(); }
+function planProfile(plan) {
+  const m = (plan && plan.meta) || {};
+  return { diet: m.diet || 'standard', allerg: m.allerg || 'none', avoid: [...new Set([...(m.avoid || []), ...(appState.avoidFoods || [])])] };
+}
+const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
+
+function renderNutritionTools(plan) {
+  const el = document.getElementById('nutrition-tools'); if (!el) return;
+  const has = ((plan.days || [])[0] || {}).nutrition && Array.isArray(plan.days.find(d => d.nutrition && d.nutrition.meals && d.nutrition.meals.length)?.nutrition.meals[0]?.items);
+  const avoid = appState.avoidFoods || [];
+  el.innerHTML = (has
+    ? '<p class="nt-hint">Can\'t eat something, or it costs too much or is hard to find? Tap <b>Swap</b> next to any food and pick an alternative. We keep the meal on target.</p>'
+    : '<p class="nt-hint">Food swaps are available on plans created after this update. Create a new plan to unlock them.</p>')
+    + (avoid.length ? `<div class="avoid-chips"><span>Foods you avoid:</span>${avoid.map(id => `<button type="button" class="avoid-chip" onclick="removeAvoid('${escapeAttr(id)}')" aria-label="Allow ${escapeAttr(id.replace(/_/g, ' '))} again">${escapeAttr(id.replace(/_/g, ' '))} ✕</button>`).join('')}</div>` : '');
+}
+
+async function openSwap(di, mi, ii) {
+  const saved = loadPlan(); if (!saved) return;
+  swapCtx = { di, mi, ii, reason: 'any' };
+  document.getElementById('swap-list').innerHTML = '<p class="swap-loading">Finding alternatives…</p>';
+  document.getElementById('swap-everywhere').checked = true;   // sensible defaults every time the dialog opens
+  document.getElementById('swap-avoid').checked = true;
+  document.getElementById('swap-modal').classList.add('open');
+  try { swapCtx.S = await loadSwaps(); } catch { closeSwap(); showToast('Could not load swaps. Check your connection and try again.'); return; }
+  document.querySelectorAll('#swap-reasons .swap-chip').forEach(b => b.classList.toggle('active', b.dataset.reason === 'any'));
+  renderSwap();
+}
+function setSwapReason(r) {
+  if (!swapCtx || !swapCtx.S) return;
+  swapCtx.reason = r;
+  document.querySelectorAll('#swap-reasons .swap-chip').forEach(b => b.classList.toggle('active', b.dataset.reason === r));
+  renderSwap();
+}
+function renderSwap() {
+  const { S, di, mi, ii, reason } = swapCtx;
+  const saved = loadPlan(); const meal = saved.plan.days[di].nutrition.meals[mi];
+  const r = S.suggestSwaps(meal, ii, { profile: planProfile(saved.plan), reason });
+  if (!r.ok) { document.getElementById('swap-list').innerHTML = '<p class="swap-loading">This meal can\'t be swapped. Create a new plan to unlock swaps.</p>'; return; }
+  document.getElementById('swap-title').innerHTML = `Swap <span>${escapeAttr(shortFoodName(r.from.label))}</span>`;
+  document.getElementById('swap-sub').textContent = `${meal.items[ii][2]} · ${r.from.costLabel} · ${r.from.availLabel}`;
+  const note = document.getElementById('swap-note'); note.textContent = r.note || ''; note.hidden = !r.note;
+  document.getElementById('swap-avoid-row').hidden = reason !== 'cant_eat';
+  document.getElementById('swap-list').innerHTML = r.candidates.length ? r.candidates.map(c => `
+    <div class="swap-card ${c.onTarget ? 'ok' : 'adjust'}">
+      <div class="swap-card-main">
+        <b>${escapeAttr(c.text)}</b>
+        <span class="swap-tags"><i class="tag c${c.cost}">${escapeAttr(c.costLabel)}</i><i class="tag a${c.avail}">${escapeAttr(c.availLabel)}</i></span>
+        <div class="swap-delta">${signed(c.delta.calories)} kcal · ${signed(c.delta.protein)}g protein · ${signed(c.delta.carbs)}g carbs · ${signed(c.delta.fats)}g fat</div>
+        ${c.changed.length ? `<div class="swap-also">Also: ${c.changed.map(x => `${escapeAttr(x.from)} → ${escapeAttr(x.to)}`).join('; ')}</div>` : ''}
+        <div class="swap-status">${c.onTarget ? '✓ Keeps this meal on target' : 'Slightly off this meal\'s target'}</div>
+      </div>
+      <button type="button" class="btn-primary swap-choose" onclick="chooseSwap('${escapeAttr(c.id)}')">Use this</button>
+    </div>`).join('')
+    : '<p class="swap-loading">No suitable alternatives found for this reason. Try another option above.</p>';
+}
+function shortFoodName(label) { return label.replace(/\s*\(.*?\)/g, ''); }
+
+function rerenderPlanKeepView() {
+  const y = window.scrollY; const saved = loadPlan();
+  renderPlan(saved.plan, saved.goal, { keepScroll: true });
+  switchPlanTab('nutrition'); window.scrollTo(0, y);
+}
+function chooseSwap(foodId) {
+  if (!swapCtx || !swapCtx.S) return;
+  const { S, di, mi, ii, reason } = swapCtx;
+  const saved = loadPlan(); const plan = saved.plan; const profile = planProfile(plan);
+  const meal = plan.days[di].nutrition.meals[mi]; const fromId = meal.items[ii][0];
+  const everywhere = document.getElementById('swap-everywhere').checked;
+  let msg;
+  if (everywhere) {
+    const res = S.swapEverywhere(plan, fromId, foodId, { profile });
+    if (!res.changed) { showToast('That swap is not possible.'); return; }
+    msg = `Swapped in ${res.changed} meal${res.changed === 1 ? '' : 's'}` + (res.skipped ? `. ${res.skipped} kept as they were.` : '.');
+  } else {
+    const nm = S.applySwap(meal, ii, foodId, { profile });
+    if (!nm) { showToast('That swap is not possible.'); return; }
+    plan.days[di].nutrition.meals[mi] = nm; S.refreshDayTotals(plan.days[di]); msg = 'Swapped.';
+  }
+  if (reason === 'cant_eat' && document.getElementById('swap-avoid').checked) {
+    appState.avoidFoods = [...new Set([...(appState.avoidFoods || []), fromId])].slice(0, 40);
+    msg += ' We\'ll leave it out of future plans.';
+  }
+  touch(); closeSwap(); rerenderPlanKeepView(); showToast(msg);
+}
+async function undoSwap(di, mi) {
+  const saved = loadPlan(); if (!saved) return;
+  let S; try { S = await loadSwaps(); } catch { showToast('Could not undo. Check your connection.'); return; }
+  const day = saved.plan.days[di]; day.nutrition.meals[mi] = S.undoMeal(day.nutrition.meals[mi]); S.refreshDayTotals(day);
+  touch(); rerenderPlanKeepView(); showToast('Back to the original meal.');
+}
+function removeAvoid(id) {
+  appState.avoidFoods = (appState.avoidFoods || []).filter(x => x !== id); touch();
+  const saved = loadPlan(); if (saved) renderNutritionTools(saved.plan);
+  showToast('Done. It can be used in future plans again.');
+}
+function closeSwap() { const m = document.getElementById('swap-modal'); if (m) m.classList.remove('open'); swapCtx = null; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSwap(); });
 
 // ══════════════════════════════════════════════
 // FORGOT / RESET PASSWORD

@@ -80,6 +80,21 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Food swaps ("can't eat it" / "too expensive" / "hard to find")
+
+Every generated meal carries `type` (breakfast/main/snack) and `items: [[foodId, grams, text], ...]` next to the old `foods` text.
+`lib/planner/swaps.js` (pure ESM, shared by the generator, the browser and the tests) holds `formatAmount` (the ONE place amounts
+are formatted, so plan text and swap text never drift), `suggestSwaps`, `applySwap`, `undoMeal`, `swapEverywhere`, `refreshDayTotals`.
+The browser loads it lazily with `import('/lib/planner/swaps.js')` (so `lib/planner/*` must stay publicly served static files).
+`lib/planner/restrictions.js` = diet / allergy / avoid rules, used by BOTH the generator and the swap engine.
+Food data (foods.js): `role` (protein/carb/fat/veg), `cost` 1-3 and `avail` 1-3 (relative, South Africa; rough guides, NOT prices),
+`sweet` (shake / yogurt proteins), `nut` (nuts and butters), `FOOD_TYPES` (meal types a food really appears in). New foods need metadata
+or foods.js throws on load. A swap: same job, allowed by diet / allergies / avoid list, fits the meal type and how it is eaten, then
+the new amount AND the biggest carb and fat foods are re-solved so calories and protein stay near the original (on target = calories
+within 6% or 15 kcal, protein within 12% or 3 g). "I can't eat it" never offers a close cousin (same allergen group) and can add the
+food to `appState.avoidFoods` (synced via /api/state, sent to /api/plan/generate as `avoid`). Swapped meals keep `orig` so Undo works.
+api/state.js `scrub` depth must stay >= 12 or swapped meals get their items nulled. Old plans without `items` show text only.
+
 ## Training Center + exercise library
 
 Data: the Free Exercise DB (github.com/yuhonas/free-exercise-db, Unlicense / public domain; credit shown in the app).

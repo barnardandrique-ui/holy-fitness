@@ -5,6 +5,8 @@ import vm from 'node:vm';
 import { generatePlan } from '../lib/planner/engine.js';
 import { POOLS } from '../lib/planner/library.js';
 import { TEMPLATES } from '../lib/planner/exercises.js';
+import { FOODS, FOOD_BY_ID } from '../lib/planner/foods.js';
+import { suggestSwaps, applySwap, undoMeal, swapEverywhere } from '../lib/planner/swaps.js';
 import { JOINT_UNFRIENDLY } from '../lib/planner/safety.js';
 
 let bad = 0;
@@ -93,6 +95,46 @@ if (fs.existsSync(dataUrl)) {
 }
 const vj = JSON.parse(fs.readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 check('hosting: exercise photos are cached by browsers (vercel.json)', JSON.stringify(vj).includes('/exercises/') && JSON.stringify(vj).includes('max-age'));
+
+
+// ── Food swaps ("can't eat it", "too expensive", "hard to find") ──
+check('swaps: every food has a job, a cost tier and an availability tier', FOODS.every(f => ['protein', 'carb', 'fat', 'veg'].includes(f.role) && [1, 2, 3].includes(f.cost) && [1, 2, 3].includes(f.avail)));
+const allMeals = plain.days.flatMap(d => d.nutrition.meals);
+check('swaps: every meal keeps its ingredients and they match the meal text', allMeals.every(m => Array.isArray(m.items) && m.items.length && m.items.map(i => i[2]).join(', ') === m.foods && m.type));
+const sMeal = plain.days[0].nutrition.meals.find(m => m.type === 'main');
+const sIdx = sMeal.items.findIndex(i => FOOD_BY_ID[i[0]].role === 'protein');
+const sProf = { diet: 'standard', allerg: 'none', avoid: [] };
+const sugg = suggestSwaps(sMeal, sIdx, { profile: sProf, reason: 'any' });
+check('swaps: a protein can be swapped, and the best alternative keeps the meal on target', sugg.ok && sugg.candidates.length > 0 && sugg.candidates[0].onTarget);
+const sApplied = applySwap(sMeal, sIdx, sugg.candidates[0].id, { profile: sProf });
+check('swaps: applying a swap stays close to the meal calories and protein', Math.abs(sApplied.calories - sMeal.calories) <= Math.max(0.07 * sMeal.calories, 16) && Math.abs(sApplied.protein - sMeal.protein) <= Math.max(4, 0.13 * sMeal.protein));
+check('swaps: undo restores the original meal exactly', JSON.stringify(undoMeal(sApplied)) === JSON.stringify(sMeal));
+// Accuracy across many meals and plans (a single lucky meal must not be able to hide a broken solver)
+let swN = 0, swOn = 0, swDrift = 0, swItems = 0;
+for (const seed of [4, 9, 21, 33, 57, 71]) {
+  const pl = generatePlan({ gender: seed % 2 ? 'male' : 'female', age: 30, height: 172, weight: 74, bf: 20, freq: '4', exp: 'intermediate', goal: 'muscle gain', diet: 'standard' }, { seed });
+  for (const m of pl.days.flatMap(d => d.nutrition.meals)) m.items.forEach((it, i) => {
+    if (!['protein', 'carb'].includes(FOOD_BY_ID[it[0]].role)) return;
+    const top = suggestSwaps(m, i, { profile: sProf, reason: 'any' }).candidates[0];
+    swItems++;
+    if (top) { swN++; if (top.onTarget) swOn++; swDrift += Math.abs(top.meal.calories - m.calories) / Math.max(m.calories, 1); }
+  });
+}
+check('swaps: across many meals the best alternative keeps the meal on target at least 90% of the time', swN > 100 && swOn / swN >= 0.9);
+check('swaps: nearly every protein and carb food has at least one alternative (95%+)', swItems > 100 && swN / swItems >= 0.95);
+check('swaps: the average calorie change after a swap is under 3%', swN > 100 && swDrift / swN < 0.03);
+const exp = suggestSwaps(sMeal, sIdx, { profile: sProf, reason: 'expensive' });
+check('swaps: "too expensive" only offers cheaper foods (or says why not)', exp.candidates.every(c => c.cost < FOOD_BY_ID[sMeal.items[sIdx][0]].cost) || !!exp.note);
+const veganMeal = { type: 'main', name: 'Lunch · Tofu with White Rice', items: [['tofu', 200, 't'], ['white_rice', 220, 'r']] };
+check('swaps: a vegan is never offered meat, eggs or dairy', suggestSwaps(veganMeal, 0, { profile: { diet: 'vegan', allerg: 'none' } }).candidates.every(c => !FOOD_BY_ID[c.id].tags.some(t => ['flesh', 'egg', 'dairy'].includes(t))));
+check('swaps: foods a client avoids are never offered', !suggestSwaps(sMeal, sIdx, { profile: { ...sProf, avoid: ['turkey', 'chicken_thigh', 'hake', 'lean_beef'] } }).candidates.some(c => ['turkey', 'chicken_thigh', 'hake', 'lean_beef'].includes(c.id)));
+const avoidPlan = generatePlan({ gender: 'male', age: 30, height: 180, weight: 82, bf: 16, freq: '4', exp: 'intermediate', goal: 'muscle gain', diet: 'standard', avoid: ['chicken', 'white_rice', 'broccoli'] }, { seed: 11 });
+check('swaps: a food on the avoid list never appears in a new plan', !avoidPlan.days.flatMap(d => d.nutrition.meals.flatMap(m => m.items.map(i => i[0]))).some(id => ['chicken', 'white_rice', 'broccoli'].includes(id)));
+const swapPlan = JSON.parse(JSON.stringify(plain)); const sw1 = swapEverywhere(swapPlan, sMeal.items[sIdx][0], sugg.candidates[0].id, { profile: sProf });
+check('swaps: swapping everywhere keeps every day total equal to its meals', sw1.changed >= 1 && swapPlan.days.every(d => d.nutrition.totalCalories === d.nutrition.meals.reduce((a, m) => a + m.calories, 0)));
+const appHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), appJs = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf8'), stateJs = fs.readFileSync(new URL('../api/state.js', import.meta.url), 'utf8');
+check('swaps: the swap dialog and Swap buttons are wired into the app', /id="swap-modal"/.test(appHtml) && /openSwap\(/.test(appJs) && /import\('\/lib\/planner\/swaps\.js'\)/.test(appJs));
+check('swaps: the server keeps deep meal data and the avoid list when saving', /depth > 12/.test(stateJs) && /avoidFoods/.test(stateJs));
 
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);
