@@ -497,3 +497,23 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .hist-tabs { width: 100%; }
   .hist-tab { flex: 1 1 0; padding: 10px 4px; font-size: 0.76rem; letter-spacing: 0.08em; text-align: center; }
 }
+
+/* ============================================================================
+   Reminders (push notifications)
+   ============================================================================ */
+.remind-modal { max-width: 520px; }
+.remind-msg { background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 8px; padding: 9px 12px; font-size: 0.84rem; color: #55431b; margin: 10px 0; }
+.remind-msg.bad { background: #FFF2F0; border-color: #F3C3BB; color: #7a2a1f; }
+.rm-info { color: var(--gray-mid); line-height: 1.65; font-size: 0.92rem; margin: 12px 0 18px; }
+.rm-status { font-family: var(--font-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.78rem; color: var(--gray-mid); margin: 14px 0 8px; }
+.rm-status.on { color: #2f6b26; }
+.rm-group { border: 1px solid var(--gray-light); border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+.rm-row { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--gray-light); cursor: pointer; flex-wrap: wrap; }
+.rm-row:last-child { border-bottom: none; }
+.rm-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--red); flex-shrink: 0; }
+.rm-row > span:nth-of-type(1) { flex: 1; min-width: 150px; }
+.rm-row b { display: block; font-size: 0.92rem; } .rm-row small { display: block; color: var(--gray-mid); font-size: 0.76rem; line-height: 1.45; margin-top: 2px; }
+.rm-row select { padding: 8px 8px; border: 1.5px solid var(--gray-light); border-radius: 8px; background: var(--white); font-family: inherit; font-size: 0.86rem; }
+.rm-pair { display: flex; gap: 6px; flex-wrap: wrap; }
+.rm-foot { color: var(--gray-mid); font-size: 0.76rem; line-height: 1.55; margin: 8px 2px 16px; }
+.rm-off { display: block; width: 100%; margin-top: 12px; background: none; border: none; color: var(--red); font-weight: 600; font-size: 0.86rem; cursor: pointer; text-decoration: underline; padding: 6px; }

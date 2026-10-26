@@ -80,6 +80,21 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Reminders (web push notifications)
+
+Daily "log your day" + weekly check-in reminders, and milestone pings to a person's OTHER devices. Files: `lib/push.js` (all logic; storage and
+sending are injected so it is testable), `api/push.js` (GET/POST for the signed-in user: subscribe / prefs / unsubscribe / test / milestone),
+`api/cron/remind.js` (the job), `sw.js` (push + notificationclick), `js/push.js` (the Reminders dialog in Account). KV: `push:<userId>` =
+`{ prefs, subs[{id,endpoint,keys,addedAt}], lastSent{daily,weekly,any} }` and the set `push:users`. Deleting an account removes both.
+Rules, do not weaken: (1) subscription endpoints must be on the browser makers' push hosts (`ALLOWED_HOSTS`), otherwise the server could be
+pointed at any address (SSRF); (2) times only 06:00-21:30 in 15-minute steps; (3) at most ONE reminder a day; the daily one is skipped if they already
+logged, the weekly one if they weighed in recently; (4) message text is GENERIC (it shows on lock screens): never weights, calories, body fat or health;
+(5) milestone kinds are an allowlist and the text is built on the server, never taken from the client; (6) iPhone requires every push to show a notification,
+so the service worker always shows one; (7) free Vercel plan: max 12 functions (we use 11) and cron jobs only once a day, so NO `crons` entry
+more frequent than daily may go into vercel.json (the deploy would fail). `web-push` is imported lazily so everything else is testable without it.
+SETUP (one time): `node scripts/generate-vapid.mjs` -> add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, CRON_SECRET in Vercel env vars and redeploy;
+then an outside scheduler (cron-job.org, free) calls `GET /api/cron/remind` every 15 minutes with header `Authorization: Bearer <CRON_SECRET>`.
+
 ## Body measurements, goals and plan updates (js/body.js)
 
 `appState.measurements` = `[{ d, w (kg), bf?, wa? }]` (one per date, max 1000) and `appState.targets` = `{ weight, bf, startWeight, startBf, startDate, setAt, reachedAt }`;

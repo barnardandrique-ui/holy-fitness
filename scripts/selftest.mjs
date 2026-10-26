@@ -7,6 +7,7 @@ import { POOLS } from '../lib/planner/library.js';
 import { TEMPLATES } from '../lib/planner/exercises.js';
 import { FOODS, FOOD_BY_ID } from '../lib/planner/foods.js';
 import { suggestSwaps, applySwap, undoMeal, swapEverywhere } from '../lib/planner/swaps.js';
+import * as PUSH from '../lib/push.js';
 import { JOINT_UNFRIENDLY } from '../lib/planner/safety.js';
 
 let bad = 0;
@@ -157,6 +158,31 @@ const healthPlan = generatePlan({ gender: 'male', age: 40, height: 180, weight: 
 check('body: even when health boxes are ticked, no health answers are kept in the plan metadata', !healthPlan.blocked && !/joints|bloodPressure|otherCondition|health/i.test(JSON.stringify(healthPlan.meta)));
 check('body: the server validates measurements and goals', /cleanMeasurements/.test(stateJs) && /w < 30 \|\| w > 300/.test(stateJs) && /cleanTargets/.test(stateJs) && /out\.measurements/.test(stateJs));
 check('body: updating a plan always asks the health check again, and the Body tab and dialogs are wired in', /function openPlanUpdate/.test(appJs) && /input\[type=checkbox\]'\)\.forEach\(c => \{ c\.checked = false; \}\)/.test(appJs) && /id="body-modal"/.test(appHtml) && /id="goal-modal"/.test(appHtml) && /id="htab-body"/.test(appHtml));
+
+
+// ── Reminders (web push): lib/push.js, api/push.js, api/cron/remind.js, sw.js, js/push.js ──
+const swSrc = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), pushLib = fs.readFileSync(new URL('../lib/push.js', import.meta.url), 'utf8');
+const cronSrc = fs.readFileSync(new URL('../api/cron/remind.js', import.meta.url), 'utf8'), dbSrc = fs.readFileSync(new URL('../lib/db.js', import.meta.url), 'utf8');
+const privacyHtml = fs.readFileSync(new URL('../privacy.html', import.meta.url), 'utf8');
+const vercelCfg = JSON.parse(fs.readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')), pkgJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const countApi = dir => fs.readdirSync(dir, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? countApi(new URL(e.name + '/', dir)) : /\.js$/.test(e.name) ? 1 : 0), 0);
+check('reminders: only the browser makers\' push services are accepted (the server can never be pointed at another address)', ['https://fcm.googleapis.com/fcm/send/a', 'https://updates.push.services.mozilla.com/wpush/v2/a', 'https://web.push.apple.com/a'].every(PUSH.isAllowedEndpoint) && ['http://fcm.googleapis.com/a', 'https://localhost/a', 'https://169.254.169.254/a', 'https://evil.com/a', 'https://fcm.googleapis.com.evil.com/a', 'https://fcm.googleapis.com@evil.com/a'].every(u => !PUSH.isAllowedEndpoint(u)));
+check('reminders: times can only be set between 06:00 and 21:30 (nobody is pinged at night)', PUSH.parseTime('06:00') === 360 && PUSH.parseTime('21:30') === 1290 && ['00:00', '02:00', '05:45', '21:45', '23:30'].every(x => PUSH.parseTime(x) === null));
+const msgKinds = ['daily', 'weekly', 'test', 'goal_reached', 'perfect_week', 'streak_7'];
+check('reminders: LOCK-SCREEN PRIVACY: messages never contain weight, calories, body fat, health words or numbers', msgKinds.every(k => !/kg|kcal|calor|weigh|fat|bmi|health|medic|diabet|pregnan|\d|%/i.test(PUSH.buildMessage(k).body)));
+check('reminders: made-up milestone kinds are refused', ['streak_5', 'streak_1000', '<script>', 'daily', ''].every(k => PUSH.buildMessage(k) === null || k === 'daily') && !PUSH.isMilestoneKind('daily') && !PUSH.isMilestoneKind('streak_5') && PUSH.isMilestoneKind('goal_reached'));
+const rDoc = { prefs: { ...PUSH.DEFAULT_PREFS(), weekly: { on: true, day: 1, time: '07:30' } }, subs: [{ id: 'a' }], lastSent: {} }, rPlan = { plan: { days: [] }, history: [], measurements: [] };
+const rAt = (d, hm) => Date.parse(`${d}T${hm}:00+02:00`);
+check('reminders: the daily nudge is skipped if the person already logged today, and sent otherwise', PUSH.dueReminder(rDoc, rPlan, rAt('2026-10-27', '18:30'))?.kind === 'daily' && PUSH.dueReminder(rDoc, { ...rPlan, history: [{ date: '2026-10-27' }] }, rAt('2026-10-27', '18:30')) === null);
+check('reminders: at most one a day, never twice, and not before the chosen time', PUSH.dueReminder({ ...rDoc, lastSent: { any: '2026-10-27' } }, rPlan, rAt('2026-10-27', '18:45')) === null && PUSH.dueReminder(rDoc, rPlan, rAt('2026-10-27', '18:00')) === null);
+check('reminders: the weekly check-in is skipped if they weighed in recently', PUSH.dueReminder(rDoc, { ...rPlan, measurements: [{ d: '2026-10-24' }] }, rAt('2026-10-26', '07:30')) === null && PUSH.dueReminder(rDoc, rPlan, rAt('2026-10-26', '07:30'))?.kind === 'weekly');
+check('reminders: the scheduled job needs the secret (compared safely) and the keys', /CRON_SECRET/.test(cronSrc) && /timingSafeEqual/.test(cronSrc) && /401/.test(cronSrc) && /vapidConfig\(\)/.test(cronSrc));
+check('reminders: the server stays within the free plan limit of 12 functions', countApi(new URL('../api/', import.meta.url)) <= 12);
+check('reminders: no scheduled job in vercel.json runs more often than daily (the free plan would refuse to deploy)', !vercelCfg.crons || vercelCfg.crons.every(c => /^\d+ \d+ \* \* \*$/.test(c.schedule)));
+check('reminders: the service worker shows notifications and opens the right screen, and still never caches private data', /addEventListener\('push'/.test(swSrc) && /notificationclick/.test(swSrc) && /showNotification/.test(swSrc) && !/\/api/.test(swSrc) && !/app\.js|\.css/.test(swSrc));
+check('reminders: web-push is a dependency and is loaded only when something is sent', !!pkgJson.dependencies['web-push'] && !/^import .*['"]web-push['"]/m.test(pushLib) && /import\('web-push'\)/.test(pushLib));
+check('reminders: deleting an account deletes its reminder devices and schedule entry', /push:\$\{user\.id\}/.test(dbSrc) && /srem\('push:users'/.test(dbSrc));
+check('reminders: the privacy policy explains reminders, and reminders are opt-in from the Account dialog', /Reminders \(only if you switch them on\)/.test(privacyHtml) && /HFPush\.open\(\)/.test(appHtml) && /id="remind-modal"/.test(appHtml));
 
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);

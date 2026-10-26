@@ -22,6 +22,8 @@ index.html, css/*.css, js/app.js      Frontend
 privacy.html, terms.html              Legal pages for South Africa (DRAFTS — fill placeholders, get reviewed)
 js/progress.js                        Daily-target logic, streaks, history views (tested separately)
 js/training.js, data/, exercises/       Training Center + exercise library (876 exercises, photos)
+lib/push.js, api/push.js, api/cron/   Reminders (web push notifications) and the scheduled job
+js/push.js                            The Reminders dialog
 js/body.js                            Body measurements, goals, trend, plan-update advice (tested separately)
 lib/planner/swaps.js, restrictions.js  Food swaps (alternatives that keep meals on target) + diet/allergy rules
 lib/planner/library.js                Planner exercise pools (generated from the library)

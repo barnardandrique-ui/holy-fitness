@@ -103,6 +103,7 @@
     <button class="modal-close" onclick="closeSimpleModal('account-modal')">✕</button>
     <div class="modal-headline">My <span>account</span></div>
     <p class="modal-sub" id="account-sub"></p>
+    <button class="btn-modal-submit" onclick="closeSimpleModal('account-modal'); HFPush.open();" style="margin-bottom:12px;">Reminders</button>
     <button class="btn-modal-submit" id="account-install" hidden onclick="closeSimpleModal('account-modal'); HFInstall.install();" style="margin-bottom:12px;">Add App to Home Screen</button>
     <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
     <button class="btn-modal-submit btn-secondary" onclick="closeSimpleModal('account-modal'); doLogout();">Log out</button>
@@ -654,8 +655,19 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="remind-modal" role="dialog" aria-modal="true" aria-labelledby="remind-title">
+  <div class="modal remind-modal">
+    <button class="modal-close" onclick="HFPush.close()" aria-label="Close">✕</button>
+    <div class="modal-headline" id="remind-title">Your <span>reminders</span></div>
+    <p class="modal-sub">Gentle nudges on your phone or computer, even when the app is closed. You choose the times and can switch them off any time.</p>
+    <p class="remind-msg" id="remind-msg" role="status" aria-live="polite" hidden></p>
+    <div id="remind-body"></div>
+  </div>
+</div>
+
 <script src="/js/progress.js"></script>
 <script src="/js/install.js"></script>
+<script src="/js/push.js"></script>
 <script src="/js/body.js"></script>
 <script src="/js/exercise-links.js"></script>
 <script src="/js/training.js"></script>

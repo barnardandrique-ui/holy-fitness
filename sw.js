@@ -26,3 +26,30 @@ self.addEventListener('fetch', event => {
     event.respondWith(caches.match(req).then(hit => hit || fetch(req)));
   }
 });
+
+// ── Reminders (push notifications) ──
+// The text always comes from our own server and is deliberately generic. Tapping a notification opens the app on the right screen.
+const safeUrl = u => (typeof u === 'string' && u.startsWith('/') && !u.startsWith('//') ? u : '/');
+
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = {}; }
+  event.waitUntil(self.registration.showNotification(String(data.title || 'Holy Fitness').slice(0, 80), {
+    body: String(data.body || '').slice(0, 200),
+    icon: '/assets/icon-192.png',
+    badge: '/assets/badge-96.png',
+    tag: String(data.tag || 'holy-fitness').slice(0, 40),
+    data: { url: safeUrl(data.url) },
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = safeUrl(event.notification.data && event.notification.data.url);
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if ('focus' in c) return 'navigate' in c ? c.navigate(url).then(w => (w || c).focus()).catch(() => c.focus()) : c.focus();
+    }
+    return self.clients.openWindow(url);
+  }));
+});

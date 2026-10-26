@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Holy Fitness — rule-based 7-day training, nutrition, and sleep plans.",
+  "description": "Holy Fitness \u2014 rule-based 7-day training, nutrition, and sleep plans.",
   "scripts": {
     "dev": "vercel dev"
   },
   "dependencies": {
     "@vercel/kv": "^3.0.0",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "web-push": "^3.6.7"
   }
 }

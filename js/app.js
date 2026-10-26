@@ -130,6 +130,17 @@ window.addEventListener('unhandledrejection', function (e) {
   }
 });
 
+// A tapped notification opens the app at /?open=<screen>.
+function handleDeepLink() {
+  const q = new URLSearchParams(window.location.search).get('open');
+  if (!q) return;
+  history.replaceState(null, '', window.location.pathname);
+  if (q === 'today') enterApp();
+  else if (q === 'weighin') { enterApp(); openBodyModal(); }
+  else if (q === 'goal') showBody();
+  else if (q === 'history') showHistory();
+}
+
 async function init() {
   try {
     const resp = await fetch('/api/auth/me', { credentials: 'include' });
@@ -139,6 +150,8 @@ async function init() {
       await loadState();
       setLoggedIn();
       enterApp();
+      handleDeepLink();
+      if (window.HFPush) HFPush.reconcile();
     }
   } catch {
     // If the check fails (e.g. offline), just show the logged-out state.
@@ -805,6 +818,7 @@ function showCelebration(entry) {
   if (sec) { sec.textContent = 'See my progress'; sec.onclick = () => { closeCelebration(); showHistory(); }; }
   const saved = loadPlan();
   const c = HFProgress.celebrationFor(entry, appState.history, HFProgress.localDate(), saved ? saved.plan.days.length : 0);
+  if (window.HFPush) { if (c.kind === 'streak') HFPush.milestone('streak_' + c.streak); else if (c.kind === 'week') HFPush.milestone('perfect_week'); }   // also tell the person's other devices
   document.getElementById('celebrate-kicker').textContent = c.kicker;
   document.getElementById('celebrate-title').innerHTML = c.title;          // fixed text from our own code, never user input
   document.getElementById('celebrate-msg').textContent = c.line;
@@ -1411,6 +1425,7 @@ function checkGoalReached() {
   if (prog && prog.reached) { t.reachedAt = todayStr(); touch(); refreshBodyViews(); showGoalCelebration(prog); }
 }
 function showGoalCelebration(prog) {
+  if (window.HFPush) HFPush.milestone('goal_reached');
   const chips = [];
   if (prog.weight) chips.push(`Weight ${r1n(prog.weight.start)} → ${r1n(prog.weight.now)} kg`);
   if (prog.bf) chips.push(`Body fat ${r1n(prog.bf.start)}% → ${r1n(prog.bf.now)}%`);
