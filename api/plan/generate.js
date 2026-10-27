@@ -4,6 +4,7 @@
 // if a condition needs a doctor, it returns { blocked: true, ... } instead of a plan.
 import { getSessionFromRequest } from '../../lib/session.js';
 import { generatePlan } from '../../lib/planner/engine.js';
+import { getUserById, updateUser } from '../../lib/db.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
     if (result.blocked) {
       return res.status(200).json({ blocked: true, reasons: result.reasons, eatingDisorder: !!result.eatingDisorder, message: result.message });
     }
+    try { const u = await getUserById(session.sub); if (u) await updateUser(u.id, { plansGenerated: (Number(u.plansGenerated) || 0) + 1, lastPlanAt: new Date().toISOString() }); } catch { /* counting must never block a plan */ }
     return res.status(200).json({ plan: result, goal: result.meta.goal });
   } catch (err) {
     console.error('plan generation failed:', err);

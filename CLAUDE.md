@@ -80,6 +80,25 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Admin panel (separate from the client app)
+
+Files: `admin.html` + `js/admin.js` + `css/admin.css` (the page; own look: dark wine header + ADMIN badge, own manifest `admin.webmanifest`, own icons),
+`api/admin.js` (the 12th and LAST function the free Vercel plan allows), `lib/admin.js` (pure logic), `scripts/make-admin.mjs` (owner creates logins privately).
+SEPARATION RULES, do not weaken (the self-test enforces them):
+- Admin identities are NOT in the client database. They come from Vercel settings in EXACTLY TWO slots: `ADMIN_1_EMAIL/HASH/NAME/TOTP`, `ADMIN_2_*` (+ one `ADMIN_SESSION_SECRET`).
+  No sign-up, no endpoint creates or promotes an admin, nothing reads an ADMIN_3. Max 2 admins. To add/remove/change one: edit the setting in Vercel and redeploy.
+- Different cookie (`hf_admin`, Path=/api/admin so the browser never sends it to client endpoints, HttpOnly, SameSite=Strict), different secret (must differ from SESSION_SECRET),
+  different store (KV `adminsess:*`, 30-min idle / 8-h max, removing an admin in Vercel ends their session). api/admin.js never imports lib/session.js or reads hf_session.
+- Anyone who is not a signed-in admin gets a plain 404 (even when admin is not configured). Login: bcrypt hash, optional authenticator code (RFC 6238, single use),
+  5 failures per source / 15 per account per 15 minutes (a stranger cannot lock the owner out), identical error for every failure.
+- READ-ONLY for client data. Full client details (plan, meals, training, sleep, history, body numbers) only if the client switched on "Share my progress with my coach"
+  (`user.coach.share === true`, checked on EVERY request so revoking is immediate); otherwise basic account info only. Whitelisted fields only (never password hashes/tokens).
+- Statistics are anonymous: groups under 5 are shown as "<5"; nothing at all under 5 accounts. CSV exports neutralise formulas.
+- Every sign-in, failed sign-in, client view and export is written to the audit log (`audit:log`, last 2000); the client sees "your coach last viewed your progress on".
+- The client app contains NO admin code. The only trace is an optional "Admin" link in Account that appears on a device where the owner switched it on in admin Settings (localStorage `hf_show_admin_link`).
+- Tracked for admin: `user.lastLoginAt`, `user.plansGenerated` (counted when a plan is generated, not when blocked), `user.coach {share, interest, ...timestamps}`; last active = state.updatedAt.
+SETUP: for each admin run `node scripts/make-admin.mjs 1 you@gmail.com "Name" [--code]` (password prompt hidden), add the printed settings to Vercel (also `ADMIN_SESSION_SECRET` once), redeploy, open `/admin`.
+
 ## Reminders (web push notifications)
 
 Daily "log your day" + weekly check-in reminders, and milestone pings to a person's OTHER devices. Files: `lib/push.js` (all logic; storage and

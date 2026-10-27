@@ -8,6 +8,7 @@ import { TEMPLATES } from '../lib/planner/exercises.js';
 import { FOODS, FOOD_BY_ID } from '../lib/planner/foods.js';
 import { suggestSwaps, applySwap, undoMeal, swapEverywhere } from '../lib/planner/swaps.js';
 import * as PUSH from '../lib/push.js';
+import * as ADM from '../lib/admin.js';
 import { JOINT_UNFRIENDLY } from '../lib/planner/safety.js';
 
 let bad = 0;
@@ -195,6 +196,28 @@ check('reminders: a space after "mailto:" is fixed, and "mailto:" with no addres
 check('reminders: wrong-length keys and public/private keys that do not belong together are reported in plain words, without showing the keys', PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PRIVATE_KEY: 'short' }))).length === 1 && /do not belong together/.test(PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PUBLIC_KEY: Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString('base64url') }))).join(' ')) && !PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PRIVATE_KEY: 'short' }))).join('').includes(vPriv));
 check('reminders: error text for the owner never contains a secret', PUSH.redact('x ' + vPriv, { VAPID_PRIVATE_KEY: vPriv }) === 'x ***');
 check('reminders: the job has a ?check=1 mode (needs the password) and sending says exactly which setting is wrong', /check/.test(cronSrc) && /vapidProblems/.test(cronSrc) && /problems/.test(cronSrc) && /vapidProblems/.test(fs.readFileSync(new URL('../api/push.js', import.meta.url), 'utf8')));
+
+
+// ── Admin panel (lib/admin.js, api/admin.js, admin.html): SEPARATION and PRIVACY rules ──
+const admApi = fs.readFileSync(new URL('../api/admin.js', import.meta.url), 'utf8'), admLib = fs.readFileSync(new URL('../lib/admin.js', import.meta.url), 'utf8'), meApi = fs.readFileSync(new URL('../api/auth/me.js', import.meta.url), 'utf8'), admPage = fs.readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
+const bcrypt60 = '$2a$10$' + 'a'.repeat(53);
+const admEnv = { ADMIN_1_EMAIL: 'one@example.com', ADMIN_1_HASH: bcrypt60, ADMIN_2_EMAIL: 'two@example.com', ADMIN_2_HASH: bcrypt60, ADMIN_3_EMAIL: 'three@example.com', ADMIN_3_HASH: bcrypt60, ADMIN_SESSION_SECRET: 'a'.repeat(40), SESSION_SECRET: 'b'.repeat(40) };
+check('admin: there are exactly TWO admin slots, a third in the settings is ignored, and nothing in the code can create an admin', ADM.MAX_ADMINS === 2 && ADM.adminSlots(admEnv).length === 2 && !ADM.adminSlots(admEnv).some(x => x.email === 'three@example.com') && /for \(const n of \[1, 2\]\)/.test(admLib) && !/ADMIN_3|createAdmin|addAdmin|promote/i.test(admApi + admLib));
+check('admin: the admin session secret must be long and DIFFERENT from the client one (client and admin sessions can never be confused)', ADM.adminEnabled(admEnv) && !ADM.adminEnabled({ ...admEnv, ADMIN_SESSION_SECRET: admEnv.SESSION_SECRET }) && !ADM.adminEnabled({ ...admEnv, ADMIN_SESSION_SECRET: 'short' }));
+check('admin: authenticator codes match the official RFC 6238 test vectors and a code works only once', ADM.totpAt('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 1) === '287082' && ADM.verifyTotp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', '287082', 59000).ok && !ADM.verifyTotp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', '287082', 59000, 1).ok);
+check('admin: the admin cookie is a different cookie, limited to /api/admin, SameSite=Strict, and the admin API never touches the client session', /COOKIE_PATH = '\/api\/admin'/.test(admLib) && /SameSite=Strict/.test(admApi) && !/lib\/session\.js|hf_session|(?<!ADMIN_)SESSION_SECRET/.test(admApi) && /ADMIN_SESSION_SECRET/.test(admApi));
+check('admin: everyone who is not a signed-in admin gets a plain 404, and sessions end after 30 idle minutes or 8 hours', /const notFound/.test(admApi) && /notFound\(res\); return null/.test(admApi) && ADM.SESSION_IDLE_MS === 30 * 60000 && ADM.SESSION_MAX_MS === 8 * 3600000);
+check('admin: full client details need the client\'s consent (checked on every request, so revoking works at once) and every view is logged', /user\.coach && user\.coach\.share/.test(admApi) && /audit\(req, admin, 'view_account'/.test(admApi) && /audit\(req, admin, 'view_basic'/.test(admApi) && /audit\(req, admin, 'export_/.test(admApi));
+check('admin: the panel is read-only for client data (the only POSTs are login and logout)', !/setState|deleteUser/.test(admApi) && (admApi.match(/req\.method === 'POST'/g) || []).length === 2);
+const admUser = { id: 'u1', name: 'Zed', email: 'z@x.co', passwordHash: 'SECRETHASH', sv: 3, consentAt: 1, createdAt: '2026-10-01T00:00:00Z', plansGenerated: 2, coach: { share: true }, resetToken: 'tok' };
+check('admin: a list row holds ONLY approved fields; never a password hash, session data or tokens', Object.keys(ADM.accountRow(admUser, plain && { plan: plain, updatedAt: 1 })).sort().join() === 'coachShare,createdAt,daysPerWeek,email,hasPlan,id,interest,lastActiveAt,lastLoginAt,name,plansGenerated,program' && !/SECRETHASH|resetToken|"sv"|consentAt/.test(JSON.stringify(ADM.accountRow(admUser, null)) + JSON.stringify(ADM.clientDetail(admUser, { plan: plain, history: [], measurements: [] }))));
+const admItem = i => ({ user: { id: 'i' + i, name: 'N' + i, email: i + '@x.co', createdAt: '2026-10-20T00:00:00Z', coach: { share: false } }, state: { plan: { meta: { goal: i < 6 ? 'fat loss' : 'muscle gain', freq: 4, profile: { exp: 'beginner' } }, days: [] }, history: [], updatedAt: Date.now() } });
+const admIns = ADM.insights(Array.from({ length: 8 }, (_, i) => admItem(i)));
+check('admin: statistics are anonymous: groups under 5 are hidden, and nothing is shown at all for fewer than 5 accounts', admIns.goals['fat loss'] === 6 && admIns.goals['muscle gain'] === '<5' && Object.keys(ADM.insights([0, 1, 2].map(admItem)).goals).length === 0 && ADM.K_MIN === 5);
+check('admin: exports cannot run formulas in a spreadsheet', ADM.csvCell('=1+1') === "'=1+1" && ADM.csvCell('@SUM(A1)').startsWith("'") && ADM.csvCell('+1').startsWith("'") && ADM.csvCell('-2').startsWith("'"));
+check('admin: the CLIENT app contains no admin code (the admin page is never loaded, the admin API is never called)', !/admin\.js|admin\.css/.test(appHtml) && !/api\/admin/.test(appJs) && !/js\/admin/.test(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8')));
+check('admin: the admin page is not indexed by search engines and has its own app identity', /noindex/.test(admPage) && /admin\.webmanifest/.test(admPage) && JSON.stringify(vercelCfg).includes('"/admin"') && /noindex/.test(JSON.stringify(vercelCfg)));
+check('admin: the client\'s coaching switches are OFF unless a real true is sent, and the privacy policy explains administrator access', /=== true/.test(meApi) && /Who can see your information/.test(privacyHtml) && /Anonymous statistics/.test(privacyHtml) && /Personal training \(only if you opt in\)/.test(privacyHtml) && /id="coach-share"/.test(appHtml) && /id="coach-interest"/.test(appHtml));
 
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);

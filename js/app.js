@@ -1544,7 +1544,37 @@ function openAccount() {
   document.getElementById('delete-password').value = '';
   document.getElementById('delete-error').textContent = '';
   if (window.HFInstall && HFInstall.refresh) HFInstall.refresh();
+  // A small link to the admin login appears ONLY on a device where the owner switched it on (in the admin Settings). It needs the admin password.
+  const al = document.getElementById('account-admin-link');
+  if (al) { let on = false; try { on = localStorage.getItem('hf_show_admin_link') === '1'; } catch { on = false; } al.hidden = !on; }
+  loadCoaching();
   document.getElementById('account-modal').classList.add('open');
+}
+
+// ── Personal training switches (both OFF by default; the client controls them) ──
+function paintCoaching(c) {
+  document.getElementById('coach-share').checked = !!c.share;
+  document.getElementById('coach-interest').checked = !!c.interest;
+  const seen = document.getElementById('coach-seen');
+  seen.hidden = !(c.share && c.lastViewedAt);
+  if (!seen.hidden) seen.textContent = 'Your coach last viewed your progress on ' + c.lastViewedAt.slice(0, 10) + '.';
+}
+async function loadCoaching() {
+  try { const r = await fetch('/api/auth/me', { credentials: 'include' }); const d = await r.json(); if (d.coaching) paintCoaching(d.coaching); } catch { /* offline: leave as is */ }
+}
+async function setCoaching(key, value) {
+  const msg = document.getElementById('coach-msg'); msg.hidden = true;
+  try {
+    const r = await fetch('/api/auth/me', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ coaching: { [key]: value === true } }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'failed');
+    paintCoaching(d.coaching);
+    msg.textContent = key === 'share' ? (value ? 'Your coach can now see your progress. You can switch this off any time.' : 'Your coach can no longer see your progress.') : (value ? 'Thank you. We may email you about personal training.' : 'We will not email you about personal training.');
+    msg.hidden = false;
+  } catch {
+    document.getElementById(key === 'share' ? 'coach-share' : 'coach-interest').checked = !value;      // put the switch back
+    msg.textContent = 'Could not save that. Check your connection and try again.'; msg.hidden = false;
+  }
 }
 
 function downloadMyData() {

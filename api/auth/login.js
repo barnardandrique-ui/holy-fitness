@@ -1,6 +1,6 @@
 // api/auth/login.js
 import bcrypt from 'bcryptjs';
-import { getUserByEmail, getCount, incrWithExpiry, clearKey } from '../../lib/db.js';
+import { getUserByEmail, getCount, incrWithExpiry, clearKey, updateUser } from '../../lib/db.js';
 import { createSessionCookie } from '../../lib/session.js';
 
 const MAX_FAILS = 8;          // wrong passwords allowed...
@@ -29,6 +29,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Incorrect email or password.' });
     }
     await clearKey(failKey);
+    try { await updateUser(user.id, { lastLoginAt: new Date().toISOString() }); } catch { /* never block a login over this */ }
   } catch (err) {
     console.error('login failed:', err);
     return res.status(500).json({ error: 'Something went wrong logging in. Please try again.' });

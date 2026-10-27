@@ -104,6 +104,17 @@
     <div class="modal-headline">My <span>account</span></div>
     <p class="modal-sub" id="account-sub"></p>
     <button class="btn-modal-submit" onclick="closeSimpleModal('account-modal'); HFPush.open();" style="margin-bottom:12px;">Reminders</button>
+    <div class="coach-box" id="coach-box">
+      <div class="coach-title">Personal training</div>
+      <p class="coach-note">Optional. Both switches are off unless you turn them on, and you can change them at any time.</p>
+      <div class="rm-group">
+        <label class="rm-row"><input type="checkbox" id="coach-share" onchange="setCoaching('share', this.checked)" /><span><b>Share my progress with my coach</b><small>Lets your coach see your plan, workouts, meals, sleep and body numbers so they can guide you. Switch it off and it stops straight away.</small></span></label>
+        <label class="rm-row"><input type="checkbox" id="coach-interest" onchange="setCoaching('interest', this.checked)" /><span><b>I'm interested in personal training</b><small>You agree that we may contact you by email about personal training. Switch it off any time.</small></span></label>
+      </div>
+      <div class="coach-seen" id="coach-seen" hidden></div>
+      <div class="coach-msg" id="coach-msg" role="status" aria-live="polite" hidden></div>
+    </div>
+    <a class="btn-modal-submit btn-secondary" id="account-admin-link" href="/admin" hidden style="display:block;text-align:center;text-decoration:none;margin-bottom:12px;">Admin</a>
     <button class="btn-modal-submit" id="account-install" hidden onclick="closeSimpleModal('account-modal'); HFInstall.install();" style="margin-bottom:12px;">Add App to Home Screen</button>
     <button class="btn-modal-submit btn-secondary" onclick="downloadMyData()">Download my data</button>
     <button class="btn-modal-submit btn-secondary" onclick="closeSimpleModal('account-modal'); doLogout();">Log out</button>

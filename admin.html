@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#3D0000" />
+<title>Holy Fitness Admin</title>
+<link rel="manifest" href="/admin.webmanifest" />
+<link rel="icon" type="image/png" href="/assets/admin-icon-192.png" />
+<link rel="apple-touch-icon" href="/assets/admin-icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="HF Admin" />
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+<!-- Sign-in -->
+<div id="login-view" class="login-wrap" hidden>
+  <form class="login-card" id="login-form" autocomplete="off" novalidate>
+    <div class="admin-badge big">ADMIN</div>
+    <h1>Holy Fitness <em>admin</em></h1>
+    <p class="muted">Authorised administrators only.</p>
+    <label for="lg-email">Email</label><input id="lg-email" type="email" autocomplete="username" required />
+    <label for="lg-pass">Password</label><input id="lg-pass" type="password" autocomplete="current-password" required />
+    <label for="lg-code">Authenticator code <small>(if you set one up)</small></label><input id="lg-code" type="text" inputmode="numeric" maxlength="7" autocomplete="one-time-code" placeholder="123456" />
+    <div class="login-msg" id="login-msg" role="alert" hidden></div>
+    <button class="btn" type="submit" id="lg-btn">Sign in</button>
+    <p class="fine">This area is separate from the client app. Every view of a client's information is recorded.</p>
+  </form>
+</div>
+
+<!-- The panel -->
+<div id="app-view" hidden>
+  <header class="top">
+    <div class="brand"><span class="logo">HF</span><span class="brandtxt">Holy Fitness</span><span class="admin-badge">ADMIN</span></div>
+    <nav class="tabs" id="tabs" aria-label="Admin sections">
+      <button data-tab="accounts" class="active">Accounts</button><button data-tab="leads">Leads</button><button data-tab="insights">Insights</button><button data-tab="audit">Audit</button><button data-tab="settings">Settings</button>
+    </nav>
+    <div class="who"><span id="who"></span><a class="btn ghost small" href="/" id="to-client">Client app</a><button class="btn ghost small" id="signout">Sign out</button></div>
+  </header>
+  <main id="main" class="main" tabindex="-1"></main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<noscript><p style="padding:24px;font-family:sans-serif">This page needs JavaScript.</p></noscript>
+<script src="/js/admin.js"></script>
+</body>
+</html>
