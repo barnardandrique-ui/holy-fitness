@@ -46,6 +46,7 @@
   async function render() {
     const body = $('remind-body'); if (!body) return;
     if (!cfg) { body.innerHTML = '<p class="rm-info">Loading…</p>'; return; }
+    if (cfg.broken) { body.innerHTML = '<p class="rm-info">Reminders are set up but not working right now, because a setting on the server needs fixing. Please let the site owner know.</p>'; return; }
     if (!cfg.configured) { body.innerHTML = '<p class="rm-info">Reminders are not switched on for this site yet. Please check back soon.</p>'; return; }
     if (needsInstall()) { body.innerHTML = '<p class="rm-info">On iPhone and iPad, reminders work once Holy Fitness is on your home screen. Add it, then open it from there and come back here.</p><button type="button" class="btn-modal-submit" onclick="HFPush.close(); HFInstall.install();">Show me how</button>'; return; }
     if (!supported()) { body.innerHTML = '<p class="rm-info">This browser does not support reminders. Chrome, Edge, Firefox and Samsung Internet on Android or a computer do.</p>'; return; }

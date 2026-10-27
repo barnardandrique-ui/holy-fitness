@@ -94,6 +94,9 @@ so the service worker always shows one; (7) free Vercel plan: max 12 functions (
 more frequent than daily may go into vercel.json (the deploy would fail). `web-push` is imported lazily so everything else is testable without it.
 SETUP (one time): `node scripts/generate-vapid.mjs` -> add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, CRON_SECRET in Vercel env vars and redeploy;
 then an outside scheduler (cron-job.org, free) calls `GET /api/cron/remind` every 15 minutes with header `Authorization: Bearer <CRON_SECRET>`.
+Settings pasted into Vercel are cleaned (`normalizeVapid`: quotes, a `NAME=` prefix, spaces, an email without `mailto:`, a note after the address) and checked (`vapidProblems`: lengths, and that the
+public and private key belong together). The real web-push library REJECTS e.g. a subject without `mailto:` (that gave users a vague 'Something went wrong'), so never pass raw env values to it.
+To diagnose: `curl -H "Authorization: Bearer <CRON_SECRET>" "https://<site>/api/cron/remind?check=1"` lists problems in plain words and sends nothing.
 
 ## Body measurements, goals and plan updates (js/body.js)
 

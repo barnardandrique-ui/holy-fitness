@@ -1,6 +1,6 @@
 // api/push.js
 // Reminders (web push) for the signed-in user.
-//   GET                                   -> { configured, publicKey, prefs, devices }
+//   GET                                   -> { configured, broken, publicKey, prefs, devices }
 //   POST { action: 'subscribe', subscription, prefs }   turn reminders on for this device
 //   POST { action: 'prefs', prefs }                     change times / which reminders
 //   POST { action: 'unsubscribe', deviceId | all }      turn reminders off
@@ -8,7 +8,7 @@
 //   POST { action: 'milestone', kind, exclude }         tell the person's OTHER devices about a milestone
 import { requireUser } from '../lib/auth.js';
 import { getPushDoc, setPushDoc, delPushDoc, pushUsersAdd, pushUsersRemove, incrWithExpiry } from '../lib/db.js';
-import { validateSubscription, validatePrefs, deviceId, DEFAULT_PREFS, MAX_DEVICES, vapidConfig, buildMessage, isMilestoneKind, sendToDevices, webPushSender } from '../lib/push.js';
+import { validateSubscription, validatePrefs, deviceId, DEFAULT_PREFS, MAX_DEVICES, vapidConfig, vapidProblems, buildMessage, isMilestoneKind, sendToDevices, webPushSender } from '../lib/push.js';
 
 const view = doc => ({ prefs: doc ? doc.prefs : DEFAULT_PREFS(), devices: doc ? doc.subs.map(s => ({ id: s.id, addedAt: s.addedAt })) : [] });
 
@@ -23,13 +23,16 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res);
   if (!user) return;
   const cfg = vapidConfig();
+  const problems = cfg ? vapidProblems(cfg) : [];
+  const ready = !!cfg && !problems.length;            // keys present AND valid AND belonging together
+  if (cfg && !ready) console.error('reminder settings need fixing:', problems);
   try {
     const doc = await getPushDoc(user.id);
-    if (req.method === 'GET') return res.status(200).json({ configured: !!cfg, publicKey: cfg ? cfg.pub : null, ...view(doc) });
+    if (req.method === 'GET') return res.status(200).json({ configured: ready, broken: !!cfg && !ready, publicKey: ready ? cfg.pub : null, ...view(doc) });
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const b = req.body || {}; const action = String(b.action || '');
-    if (!cfg && !['unsubscribe', 'prefs'].includes(action)) return res.status(503).json({ error: 'Reminders are not switched on for this site yet.' });
+    if (!ready && !['unsubscribe', 'prefs'].includes(action)) return res.status(503).json({ error: cfg ? 'Reminders are not working right now because a server setting needs fixing. Please let the site owner know.' : 'Reminders are not switched on for this site yet.' });
 
     if (action === 'subscribe') {
       const v = validateSubscription(b.subscription); if (!v.ok) return res.status(400).json({ error: v.error });

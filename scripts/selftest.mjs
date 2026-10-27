@@ -184,5 +184,17 @@ check('reminders: web-push is a dependency and is loaded only when something is 
 check('reminders: deleting an account deletes its reminder devices and schedule entry', /push:\$\{user\.id\}/.test(dbSrc) && /srem\('push:users'/.test(dbSrc));
 check('reminders: the privacy policy explains reminders, and reminders are opt-in from the Account dialog', /Reminders \(only if you switch them on\)/.test(privacyHtml) && /HFPush\.open\(\)/.test(appHtml) && /id="remind-modal"/.test(appHtml));
 
+
+// ── Reminder server settings: the mistakes people make when pasting into Vercel must be cleaned or explained, never a vague failure ──
+const vp = (await import('node:crypto')).generateKeyPairSync('ec', { namedCurve: 'prime256v1' }), vpj = vp.publicKey.export({ format: 'jwk' });
+const vPub = Buffer.concat([Buffer.from([4]), Buffer.from(vpj.x, 'base64url'), Buffer.from(vpj.y, 'base64url')]).toString('base64url'), vPriv = vp.privateKey.export({ format: 'jwk' }).d;
+const vEnv = o => ({ VAPID_PUBLIC_KEY: vPub, VAPID_PRIVATE_KEY: vPriv, VAPID_SUBJECT: 'mailto:owner@example.com', ...o });
+check('reminders: settings pasted with quote marks, a NAME= prefix or stray spaces are cleaned up and then valid', ['"' + vPriv + '"', 'VAPID_PRIVATE_KEY=' + vPriv, ' ' + vPriv + '\n'].every(k => PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PRIVATE_KEY: k }))).length === 0));
+check('reminders: an email entered without "mailto:", or with a note after it, is fixed (the real library would reject it)', PUSH.normalizeVapid(vEnv({ VAPID_SUBJECT: 'owner@gmail.com' })).subject === 'mailto:owner@gmail.com' && PUSH.normalizeVapid(vEnv({ VAPID_SUBJECT: 'mailto:owner@gmail.com   <- put your own email here' })).subject === 'mailto:owner@gmail.com');
+check('reminders: a space after "mailto:" is fixed, and "mailto:" with no address is reported (never sent as a contact)', PUSH.normalizeVapid(vEnv({ VAPID_SUBJECT: 'mailto: owner@gmail.com' })).subject === 'mailto:owner@gmail.com' && PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_SUBJECT: 'mailto:' }))).some(p => /VAPID_SUBJECT/.test(p)));
+check('reminders: wrong-length keys and public/private keys that do not belong together are reported in plain words, without showing the keys', PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PRIVATE_KEY: 'short' }))).length === 1 && /do not belong together/.test(PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PUBLIC_KEY: Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString('base64url') }))).join(' ')) && !PUSH.vapidProblems(PUSH.vapidConfig(vEnv({ VAPID_PRIVATE_KEY: 'short' }))).join('').includes(vPriv));
+check('reminders: error text for the owner never contains a secret', PUSH.redact('x ' + vPriv, { VAPID_PRIVATE_KEY: vPriv }) === 'x ***');
+check('reminders: the job has a ?check=1 mode (needs the password) and sending says exactly which setting is wrong', /check/.test(cronSrc) && /vapidProblems/.test(cronSrc) && /problems/.test(cronSrc) && /vapidProblems/.test(fs.readFileSync(new URL('../api/push.js', import.meta.url), 'utf8')));
+
 console.log(bad ? `\n${bad} check(s) FAILED` : '\nAll checks passed.');
 process.exit(bad ? 1 : 0);
