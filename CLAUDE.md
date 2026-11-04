@@ -80,6 +80,14 @@ have thin food options and can land several % off target; the "enhanced use"
 form field is intentionally NOT used for programming (a summary disclaimer is
 added instead) — consider removing that section from the UI.
 
+## Weekly shopping list (Nutrition tab)
+
+`lib/planner/shopping.js` builds the list from `plan.days[].nutrition.meals[].items` ([id, grams, text]); plans made before Update 8 have no `items` and get a clear "create a new plan" message.
+Plans store amounts as EATEN (cooked chicken, cooked rice...), so every food has a conversion to what you BUY (`SHOP[id] = [category, name, factor, opts]`, e.g. chicken x1.33 raw, white rice x0.35 dry),
+amounts are rounded UP (50 g steps under 1 kg, 100 g above, whole eggs/bananas/tins), and legumes show "or about N tins". EVERY food in `foods.js` needs a `SHOP` entry (self-test enforces it): add one when you add a food.
+The list is rebuilt from the plan each time it is opened, so food swaps are always reflected. UI: `.shop-card` on top of the Nutrition tab opens `#shop-modal` (fixed header with progress, scrolling list, fixed WhatsApp / Copy / Clear buttons).
+Ticks live in `appState.shopping = { since: 'YYYY-MM-DD', done: [food ids] }` (synced; cleaned in api/state.js; they reset when older than 7 days). No prices are shown (we have no real price data).
+
 ## Admin panel (separate from the client app)
 
 Files: `admin.html` + `js/admin.js` + `css/admin.css` (the page; own look: dark wine header + ADMIN badge, own manifest `admin.webmanifest`, own icons),

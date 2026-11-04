@@ -75,6 +75,14 @@ function cleanTargets(t) {
   return { weight, bf, startWeight: num(t.startWeight, 30, 300), startBf: num(t.startBf, 3, 60), startDate: date(t.startDate), setAt: date(t.setAt), reachedAt: date(t.reachedAt) };
 }
 
+// Shopping list ticks: which foods the client has already bought this week. { since: 'YYYY-MM-DD', done: [food ids] }
+function cleanShopping(s) {
+  if (!s || typeof s !== 'object') return null;
+  const since = typeof s.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.since) ? s.since : null;
+  const done = Array.isArray(s.done) ? [...new Set(s.done.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 80) : [];
+  return since && done.length ? { since, done } : null;
+}
+
 function cleanState(s) {
   if (!s || typeof s !== 'object') return null;
   const out = {};
@@ -104,6 +112,7 @@ function cleanState(s) {
   // Foods the client asked never to see again (ids only).
   out.measurements = cleanMeasurements(s.measurements);
   out.targets = cleanTargets(s.targets);
+  out.shopping = cleanShopping(s.shopping);
   out.avoidFoods = Array.isArray(s.avoidFoods) ? [...new Set(s.avoidFoods.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 40) : [];
 
   out.updatedAt = Number.isFinite(Number(s.updatedAt)) ? Number(s.updatedAt) : Date.now();

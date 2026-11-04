@@ -9,6 +9,7 @@ import { FOODS, FOOD_BY_ID } from '../lib/planner/foods.js';
 import { suggestSwaps, applySwap, undoMeal, swapEverywhere } from '../lib/planner/swaps.js';
 import * as PUSH from '../lib/push.js';
 import * as ADM from '../lib/admin.js';
+import * as SHOP from '../lib/planner/shopping.js';
 import { JOINT_UNFRIENDLY } from '../lib/planner/safety.js';
 
 let bad = 0;
@@ -16,22 +17,22 @@ const check = (name, ok) => { console.log(ok ? 'OK  ' : 'FAIL', name); if (!ok) 
 const base = { gender: 'male', age: 28, height: 180, weight: 82, bf: 15, freq: '4', exp: 'intermediate', goal: 'muscle gain', diet: 'standard', allerg: 'none' };
 const ex = p => p.days.flatMap(d => d.training.exercises);
 
-const plain = generatePlan(base);
+const plain = generatePlan(base, { seed: 7 });
 check('normal plan: 7 days, sensible calories, no NaN', plain.days.length === 7 && plain.overview.dailyCalories > 1500 && !/NaN|undefined|Infinity/.test(JSON.stringify(plain)));
 check('same seed gives the same plan', JSON.stringify(generatePlan(base, { seed: 7 })) === JSON.stringify(generatePlan(base, { seed: 7 })));
 
 for (const k of ['heart', 'chestPain', 'dizzy', 'diabetesMeds', 'kidney', 'pregnant', 'eatingDisorder']) {
-  const r = generatePlan({ ...base, health: { [k]: true } });
+  const r = generatePlan({ ...base, health: { [k]: true } }, { seed: 7 });
   check(`"${k}" blocks the plan and returns no plan data`, r.blocked === true && !r.days && !r.overview);
 }
-check('eating-disorder message points to South African support', /sadag\.org/.test(generatePlan({ ...base, health: { eatingDisorder: true } }).message));
-check('eating-disorder message has no numbers', !/\d/.test(generatePlan({ ...base, health: { eatingDisorder: true } }).message.replace('allianceforeatingdisorders.com', '')));
+check('eating-disorder message points to South African support', /sadag\.org/.test(generatePlan({ ...base, health: { eatingDisorder: true } }, { seed: 7 }).message));
+check('eating-disorder message has no numbers', !/\d/.test(generatePlan({ ...base, health: { eatingDisorder: true } }, { seed: 7 }).message.replace('allianceforeatingdisorders.com', '')));
 
-const joints = generatePlan({ ...base, goal: 'athletic performance', health: { joints: true } });
+const joints = generatePlan({ ...base, goal: 'athletic performance', health: { joints: true } }, { seed: 7 });
 check('joint problems: no jumping / high-impact exercises', ex(joints).every(e => !JOINT_UNFRIENDLY.has(e.name)));
-const bp = generatePlan({ ...base, health: { bloodPressure: true } });
+const bp = generatePlan({ ...base, health: { bloodPressure: true } }, { seed: 7 });
 check('high blood pressure: gentle sets and a caution note', ex(bp).every(e => +e.sets <= 3) && bp.notes.some(n => n.level === 'caution'));
-const cut = generatePlan({ ...base, goal: 'fat loss', bf: 30, health: { pcos: true }, gender: 'female' });
+const cut = generatePlan({ ...base, goal: 'fat loss', bf: 30, health: { pcos: true }, gender: 'female' }, { seed: 7 });
 check('PCOS: calorie deficit capped at 15%', cut.meta.targetKcal / cut.meta.maintenance >= 0.85);
 
 
@@ -217,6 +218,15 @@ check('admin: statistics are anonymous: groups under 5 are hidden, and nothing i
 check('admin: exports cannot run formulas in a spreadsheet', ADM.csvCell('=1+1') === "'=1+1" && ADM.csvCell('@SUM(A1)').startsWith("'") && ADM.csvCell('+1').startsWith("'") && ADM.csvCell('-2').startsWith("'"));
 const mkAdmin = fs.readFileSync(new URL('./make-admin.mjs', import.meta.url), 'utf8'), gitIgn = fs.readFileSync(new URL('../.gitignore', import.meta.url), 'utf8');
 check('admin setup: the login settings are saved to a private file that git ignores, and nothing private is ever printed on screen', /admin-settings/.test(gitIgn) && /FILE = 'admin-settings\.txt'/.test(mkAdmin) && /mode: 0o600/.test(mkAdmin) && !/console\.log\([^\n]*(hash|secret|totp|items|text)/i.test(mkAdmin));
+// ── Weekly shopping list (lib/planner/shopping.js): cooked amounts must be turned back into what you actually buy ──
+const shopStateSrc = fs.readFileSync(new URL('../api/state.js', import.meta.url), 'utf8');
+const shopVegan = generatePlan({ ...base, diet: 'vegan' }, { seed: 3 }), shopPlain = SHOP.buildShoppingList(plain), shopVeg = SHOP.buildShoppingList(shopVegan);
+const shopEaten = {}; for (const d of plain.days) for (const m of d.nutrition.meals) for (const it of m.items) shopEaten[it[0]] = (shopEaten[it[0]] || 0) + it[1];
+check('shopping: every food the planner can use has a shopping entry, and the cooked-to-raw conversions are sane (chicken bought raw is MORE than eaten, rice bought dry is LESS)', FOODS.every(f => SHOP.SHOP[f.id]) && Object.keys(SHOP.SHOP).every(id => FOOD_BY_ID[id]) && SHOP.SHOP.chicken[2] > 1 && SHOP.SHOP.white_rice[2] < 0.5 && Object.values(SHOP.SHOP).every(e => e[2] >= 0.3 && e[2] <= 1.7));
+check('shopping: a plan builds a list with every food on it once, amounts rounded UP so nobody runs short, eggs in whole numbers', shopPlain.ok && shopPlain.count >= 10 && new Set(shopPlain.groups.flatMap(g => g.items.map(i => i.id))).size === shopPlain.count && shopPlain.groups.flatMap(g => g.items).every(i => !i.generic && (i.unit !== 'g' || i.amount >= shopEaten[i.id] * SHOP.SHOP[i.id][2])) && (shopPlain.groups.flatMap(g => g.items).find(i => i.id === 'egg') || { amount: 1 }).amount % 1 === 0);
+check('shopping: a vegan plan never asks for meat, eggs or dairy', shopVeg.ok && shopVeg.groups.flatMap(g => g.items).every(i => !FOOD_BY_ID[i.id].tags.some(t => ['flesh', 'egg', 'dairy'].includes(t))));
+check('shopping: swapping a food changes the list, and a plan from before ingredients were stored gets a clear message instead of a wrong list', (() => { const fixed = generatePlan({ gender: 'male', age: 30, height: 180, weight: 82, bf: 16, freq: '4', exp: 'intermediate', goal: 'muscle gain', diet: 'standard' }, { seed: 4 }); const had = SHOP.buildShoppingList(fixed).groups.flatMap(g => g.items).map(i => i.id); swapEverywhere(fixed, 'chicken', 'tofu', { profile: { diet: 'standard', allerg: 'none', avoid: [] } }); const l = SHOP.buildShoppingList(fixed).groups.flatMap(g => g.items).map(i => i.id); return had.includes('chicken') && !l.includes('chicken') && l.includes('tofu') && SHOP.buildShoppingList({ days: [{ nutrition: { meals: [{ foods: '100g chicken' }] } }] }).reason === 'old-plan'; })());
+check('shopping: saved ticks are cleaned by the server (plain food ids and a date only, at most 80) and the Nutrition tab has the list screen', /function cleanShopping[\s\S]*?\\d\{4\}-\\d\{2\}-\\d\{2\}[\s\S]*?a-z0-9_\]\{1,40\}[\s\S]*?slice\(0, 80\)[\s\S]*?\n\}/.test(shopStateSrc) && /out\.shopping = cleanShopping/.test(shopStateSrc) && /id="shop-modal"/.test(appHtml) && /function openShopping/.test(appJs) && /shopCard/.test(appJs));
 check('admin: the CLIENT app contains no admin code (the admin page is never loaded, the admin API is never called)', !/admin\.js|admin\.css/.test(appHtml) && !/api\/admin/.test(appJs) && !/js\/admin/.test(fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8')));
 check('admin: the admin page is not indexed by search engines and has its own app identity', /noindex/.test(admPage) && /admin\.webmanifest/.test(admPage) && JSON.stringify(vercelCfg).includes('"/admin"') && /noindex/.test(JSON.stringify(vercelCfg)));
 check('admin: the client\'s coaching switches are OFF unless a real true is sent, and the privacy policy explains administrator access', /=== true/.test(meApi) && /Who can see your information/.test(privacyHtml) && /Anonymous statistics/.test(privacyHtml) && /Personal training \(only if you opt in\)/.test(privacyHtml) && /id="coach-share"/.test(appHtml) && /id="coach-interest"/.test(appHtml));

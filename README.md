@@ -22,6 +22,7 @@ index.html, css/*.css, js/app.js      Frontend
 privacy.html, terms.html              Legal pages for South Africa (DRAFTS — fill placeholders, get reviewed)
 js/progress.js                        Daily-target logic, streaks, history views (tested separately)
 js/training.js, data/, exercises/       Training Center + exercise library (876 exercises, photos)
+lib/planner/shopping.js                Weekly shopping list (cooked -> raw conversions, aisles, ticks)
 admin.html, js/admin.js, api/admin.js, lib/admin.js   Admin panel (separate logins, read-only, consent-based)
 lib/push.js, api/push.js, api/cron/   Reminders (web push notifications) and the scheduled job
 js/push.js                            The Reminders dialog

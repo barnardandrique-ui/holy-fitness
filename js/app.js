@@ -14,7 +14,7 @@ let resetToken = null;
 // drops, and is re-synced the next time the app loads.
 // ══════════════════════════════════════════════
 function defaultState() {
-  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], avoidFoods: [], measurements: [], targets: null, updatedAt: 0 };
+  return { plan: null, goal: null, planId: null, progress: { currentDayIndex: 0 }, logs: {}, history: [], avoidFoods: [], measurements: [], targets: null, shopping: null, updatedAt: 0 };
 }
 let appState = defaultState();
 let persistTimer = null;
@@ -1194,9 +1194,10 @@ const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
 
 function renderNutritionTools(plan) {
   const el = document.getElementById('nutrition-tools'); if (!el) return;
+  const shopCard = '<div class="shop-card"><div class="shop-card-text"><b>Weekly shopping list</b><span>Everything to buy for these 7 days, grouped by aisle. Tick items off as you shop.</span></div><button type="button" class="btn-shop" onclick="openShopping()">Open list</button></div>';
   const has = ((plan.days || [])[0] || {}).nutrition && Array.isArray(plan.days.find(d => d.nutrition && d.nutrition.meals && d.nutrition.meals.length)?.nutrition.meals[0]?.items);
   const avoid = appState.avoidFoods || [];
-  el.innerHTML = (has
+  el.innerHTML = shopCard + (has
     ? '<p class="nt-hint">Can\'t eat something, or it costs too much or is hard to find? Tap <b>Swap</b> next to any food and pick an alternative. We keep the meal on target.</p>'
     : '<p class="nt-hint">Food swaps are available on plans created after this update. Create a new plan to unlock them.</p>')
     + (avoid.length ? `<div class="avoid-chips"><span>Foods you avoid:</span>${avoid.map(id => `<button type="button" class="avoid-chip" onclick="removeAvoid('${escapeAttr(id)}')" aria-label="Allow ${escapeAttr(id.replace(/_/g, ' '))} again">${escapeAttr(id.replace(/_/g, ' '))} ✕</button>`).join('')}</div>` : '');
@@ -1633,3 +1634,71 @@ async function deleteMyAccount() {
 
 init();
 wireFormAutoSave();
+
+
+// ══════════════════════════════════════════════
+// Weekly shopping list (built from the plan's real ingredients, so swaps are always reflected)
+// ══════════════════════════════════════════════
+let shopMod = null, shopList = null;
+function loadShopping() { return (window.__loadShopping || (() => import('/lib/planner/shopping.js')))(); }
+function shopToday() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function shopDone() { const s = appState.shopping; return s && Array.isArray(s.done) ? s.done : []; }
+async function openShopping() {
+  if (!appState.plan) return;
+  const body = document.getElementById('shop-body');
+  body.innerHTML = '<p class="shop-note">Loading…</p>'; document.getElementById('shop-modal').classList.add('open');
+  try { shopMod = await loadShopping(); }
+  catch { body.innerHTML = '<p class="shop-note">Could not load the shopping list. Check your connection and try again.</p>'; return; }
+  shopList = shopMod.buildShoppingList(appState.plan);
+  const s = appState.shopping;                                   // ticks start fresh each week
+  if (s && s.since && (Date.parse(shopToday() + 'T00:00:00Z') - Date.parse(s.since + 'T00:00:00Z')) / 86400000 >= 7) { appState.shopping = null; touch(); }
+  paintShopping();
+}
+function paintShopping() {
+  const body = document.getElementById('shop-body'), actions = document.getElementById('shop-actions'), prog = document.getElementById('shop-progress');
+  if (!shopList || !shopList.ok) {
+    prog.hidden = true; actions.hidden = true;
+    body.innerHTML = '<p class="shop-note">' + (shopList && shopList.reason === 'old-plan'
+      ? 'This plan was made before shopping lists existed. Create a new plan to get one. Your history and progress are kept.'
+      : 'There is no meal plan to build a list from yet.') + '</p>';
+    return;
+  }
+  prog.hidden = false; actions.hidden = false;
+  const done = new Set(shopDone());
+  body.innerHTML = shopList.groups.map(g => `<div class="shop-group"><h4>${escapeAttr(g.label)} <span id="sg-${g.id}"></span></h4>${g.items.map(i => `
+    <label class="shop-item${done.has(i.id) ? ' done' : ''}" id="si-${escapeAttr(i.id)}"><input type="checkbox" ${done.has(i.id) ? 'checked' : ''} onchange="toggleShop('${escapeAttr(i.id)}', this.checked)" aria-label="${escapeAttr(i.name)}, ${escapeAttr(i.display)}">
+      <span class="si-name">${escapeAttr(i.name)}${i.hint ? `<small>${escapeAttr(i.hint)}</small>` : ''}</span><span class="si-amt">${escapeAttr(i.display)}</span></label>`).join('')}</div>`).join('');
+  document.getElementById('shop-sub').textContent = `For one person, all ${shopList.days} days of your plan. ${shopList.count} items.`;
+  paintShopProgress();
+}
+function paintShopProgress() {
+  if (!shopList || !shopList.ok) return;
+  const done = new Set(shopDone()); let n = 0;
+  for (const g of shopList.groups) { const c = g.items.filter(i => done.has(i.id)).length; n += c; const el = document.getElementById('sg-' + g.id); if (el) el.textContent = c + ' of ' + g.items.length; }
+  document.getElementById('shop-count').textContent = n + ' of ' + shopList.count + ' bought';
+  document.getElementById('shop-bar-fill').style.width = (shopList.count ? Math.round(100 * n / shopList.count) : 0) + '%';
+}
+function toggleShop(id, on) {
+  const prev = appState.shopping, set = new Set(prev && Array.isArray(prev.done) ? prev.done : []);
+  if (on) set.add(id); else set.delete(id);
+  appState.shopping = set.size ? { since: (prev && prev.since) || shopToday(), done: [...set].slice(0, 80) } : null;
+  touch();
+  const row = document.getElementById('si-' + id); if (row) row.classList.toggle('done', !!on);
+  paintShopProgress();
+}
+function clearShopTicks() { appState.shopping = null; touch(); paintShopping(); shopStatus('All ticks cleared.'); }
+function shopStatus(msg) { const el = document.getElementById('shop-status'); el.textContent = msg; clearTimeout(shopStatus.t); shopStatus.t = setTimeout(() => { el.textContent = ''; }, 3500); }
+function shopText() { return shopMod.shoppingText(shopList, shopDone()); }
+async function copyShopping() {
+  if (!shopList || !shopList.ok) return;
+  const text = shopText();
+  try { await navigator.clipboard.writeText(text); shopStatus('Copied. Paste it anywhere.'); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; } ta.remove(); shopStatus(ok ? 'Copied. Paste it anywhere.' : 'Could not copy. Select the list and copy it yourself.');
+  }
+}
+function whatsappShopping() {
+  if (!shopList || !shopList.ok) return;
+  window.open('https://wa.me/?text=' + encodeURIComponent(shopText()), '_blank', 'noopener');
+}
