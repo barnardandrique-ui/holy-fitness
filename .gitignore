@@ -5,3 +5,5 @@ node_modules/
 .data/
 *.log
 .DS_Store
+# private admin login settings made by scripts/make-admin.mjs: never upload these
+admin-settings*.txt

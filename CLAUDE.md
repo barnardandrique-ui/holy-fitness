@@ -97,7 +97,8 @@ SEPARATION RULES, do not weaken (the self-test enforces them):
 - Every sign-in, failed sign-in, client view and export is written to the audit log (`audit:log`, last 2000); the client sees "your coach last viewed your progress on".
 - The client app contains NO admin code. The only trace is an optional "Admin" link in Account that appears on a device where the owner switched it on in admin Settings (localStorage `hf_show_admin_link`).
 - Tracked for admin: `user.lastLoginAt`, `user.plansGenerated` (counted when a plan is generated, not when blocked), `user.coach {share, interest, ...timestamps}`; last active = state.updatedAt.
-SETUP: for each admin run `node scripts/make-admin.mjs 1 you@gmail.com "Name" [--code]` (password prompt hidden), add the printed settings to Vercel (also `ADMIN_SESSION_SECRET` once), redeploy, open `/admin`.
+SETUP: for each admin run `node scripts/make-admin.mjs 1 you@gmail.com "Name" --code` (password prompt hidden; add `--no-session` for the second admin). It writes the settings to `admin-settings.txt`
+(git-ignored, mode 600, one value per line, nothing private printed on screen); add them to Vercel, redeploy, DELETE the file, open `/admin`.
 
 ## Reminders (web push notifications)
 
