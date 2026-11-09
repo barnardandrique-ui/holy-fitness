@@ -75,12 +75,20 @@ function cleanTargets(t) {
   return { weight, bf, startWeight: num(t.startWeight, 30, 300), startBf: num(t.startBf, 3, 60), startDate: date(t.startDate), setAt: date(t.setAt), reachedAt: date(t.reachedAt) };
 }
 
-// Shopping list ticks: which foods the client has already bought this week. { since: 'YYYY-MM-DD', done: [food ids] }
-function cleanShopping(s) {
-  if (!s || typeof s !== 'object') return null;
-  const since = typeof s.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.since) ? s.since : null;
-  const done = Array.isArray(s.done) ? [...new Set(s.done.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 80) : [];
+// Shopping list ticks: which foods the client has already bought. Two separate sets of ticks (a weekly trip resets after 7 days, a monthly stock-up after 30)
+// and the period they last chose: { mode: 'week'|'month', week: { since: 'YYYY-MM-DD', done: [food ids] } | null, month: { ... } | null }.
+// The first version stored one set at the top level ({ since, done }); that is read as the weekly set.
+function cleanTicks(t) {
+  if (!t || typeof t !== 'object') return null;
+  const since = typeof t.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.since) ? t.since : null;
+  const done = Array.isArray(t.done) ? [...new Set(t.done.filter(id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 80) : [];
   return since && done.length ? { since, done } : null;
+}
+function cleanShopping(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return null;
+  const mode = s.mode === 'month' ? 'month' : 'week';
+  const week = cleanTicks(s.week || (Array.isArray(s.done) ? s : null)), month = cleanTicks(s.month);
+  return week || month || mode === 'month' ? { mode, week, month } : null;
 }
 
 function cleanState(s) {

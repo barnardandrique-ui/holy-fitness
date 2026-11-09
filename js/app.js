@@ -1194,7 +1194,7 @@ const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
 
 function renderNutritionTools(plan) {
   const el = document.getElementById('nutrition-tools'); if (!el) return;
-  const shopCard = '<div class="shop-card"><div class="shop-card-text"><b>Weekly shopping list</b><span>Everything to buy for these 7 days, grouped by aisle. Tick items off as you shop.</span></div><button type="button" class="btn-shop" onclick="openShopping()">Open list</button></div>';
+  const shopCard = '<div class="shop-card"><div class="shop-card-text"><b>Shopping list</b><span>Everything to buy for the week or the month, grouped by aisle. Tick items off as you shop.</span></div><button type="button" class="btn-shop" onclick="openShopping()">Open list</button></div>';
   const has = ((plan.days || [])[0] || {}).nutrition && Array.isArray(plan.days.find(d => d.nutrition && d.nutrition.meals && d.nutrition.meals.length)?.nutrition.meals[0]?.items);
   const avoid = appState.avoidFoods || [];
   el.innerHTML = shopCard + (has
@@ -1637,58 +1637,95 @@ wireFormAutoSave();
 
 
 // ══════════════════════════════════════════════
-// Weekly shopping list (built from the plan's real ingredients, so swaps are always reflected)
+// Shopping list: weekly (7 days) or monthly (30 days: stock up once + fresh weekly top-ups). Built from the plan's real ingredients, so swaps are always reflected.
 // ══════════════════════════════════════════════
 let shopMod = null, shopList = null;
+const SHOP_KEEP_DAYS = { week: 7, month: 30 };                   // ticks start fresh after this long
 function loadShopping() { return (window.__loadShopping || (() => import('/lib/planner/shopping.js')))(); }
 function shopToday() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-function shopDone() { const s = appState.shopping; return s && Array.isArray(s.done) ? s.done : []; }
+function shopState() {                                            // { mode, week, month }; the first version stored one set at the top level, which counts as the weekly set
+  const s = appState.shopping; if (!s || typeof s !== 'object') return { mode: 'week', week: null, month: null };
+  return { mode: s.mode === 'month' ? 'month' : 'week', week: s.week || (Array.isArray(s.done) ? { since: s.since, done: s.done } : null), month: s.month || null };
+}
+function saveShopState(st) {
+  const w = st.week && st.week.done && st.week.done.length ? st.week : null, m = st.month && st.month.done && st.month.done.length ? st.month : null;
+  appState.shopping = (w || m || st.mode === 'month') ? { mode: st.mode, week: w, month: m } : null;
+  touch();
+}
+function expireShopTicks() {
+  const st = shopState(); let changed = false;
+  for (const b of ['week', 'month']) {
+    const t = st[b];
+    if (t && t.since && (Date.parse(shopToday() + 'T00:00:00Z') - Date.parse(t.since + 'T00:00:00Z')) / 86400000 >= SHOP_KEEP_DAYS[b]) { st[b] = null; changed = true; }
+  }
+  if (changed) saveShopState(st);
+}
+function shopItems() { return shopList && shopList.ok ? shopList.groups.flatMap(g => g.items) : []; }
+function shopDoneIds() {                                           // ids ticked in the set each item belongs to
+  const st = shopState(), out = [];
+  for (const i of shopItems()) { const t = st[i.bucket]; if (t && Array.isArray(t.done) && t.done.includes(i.id)) out.push(i.id); }
+  return out;
+}
 async function openShopping() {
   if (!appState.plan) return;
   const body = document.getElementById('shop-body');
   body.innerHTML = '<p class="shop-note">Loading…</p>'; document.getElementById('shop-modal').classList.add('open');
   try { shopMod = await loadShopping(); }
   catch { body.innerHTML = '<p class="shop-note">Could not load the shopping list. Check your connection and try again.</p>'; return; }
-  shopList = shopMod.buildShoppingList(appState.plan);
-  const s = appState.shopping;                                   // ticks start fresh each week
-  if (s && s.since && (Date.parse(shopToday() + 'T00:00:00Z') - Date.parse(s.since + 'T00:00:00Z')) / 86400000 >= 7) { appState.shopping = null; touch(); }
+  expireShopTicks();
+  shopList = shopMod.buildShoppingList(appState.plan, { period: shopState().mode });
+  paintShopping();
+}
+function setShopPeriod(period) {
+  if (!shopMod) return;
+  const st = shopState(); st.mode = period === 'month' ? 'month' : 'week'; saveShopState(st);
+  shopList = shopMod.buildShoppingList(appState.plan, { period: st.mode });
   paintShopping();
 }
 function paintShopping() {
-  const body = document.getElementById('shop-body'), actions = document.getElementById('shop-actions'), prog = document.getElementById('shop-progress');
+  const body = document.getElementById('shop-body'), actions = document.getElementById('shop-actions'), prog = document.getElementById('shop-progress'), per = document.getElementById('shop-period');
   if (!shopList || !shopList.ok) {
-    prog.hidden = true; actions.hidden = true;
+    prog.hidden = true; actions.hidden = true; per.hidden = true;
     body.innerHTML = '<p class="shop-note">' + (shopList && shopList.reason === 'old-plan'
       ? 'This plan was made before shopping lists existed. Create a new plan to get one. Your history and progress are kept.'
       : 'There is no meal plan to build a list from yet.') + '</p>';
     return;
   }
-  prog.hidden = false; actions.hidden = false;
-  const done = new Set(shopDone());
-  body.innerHTML = shopList.groups.map(g => `<div class="shop-group"><h4>${escapeAttr(g.label)} <span id="sg-${g.id}"></span></h4>${g.items.map(i => `
+  prog.hidden = false; actions.hidden = false; per.hidden = false;
+  const month = shopList.period === 'month', done = new Set(shopDoneIds());
+  document.getElementById('shop-p-week').classList.toggle('active', !month); document.getElementById('shop-p-month').classList.toggle('active', month);
+  document.getElementById('shop-p-week').setAttribute('aria-selected', String(!month)); document.getElementById('shop-p-month').setAttribute('aria-selected', String(month));
+  body.innerHTML = shopList.groups.map(g => `<div class="shop-group${g.id === 'fresh' ? ' shop-fresh' : ''}"><h4>${escapeAttr(g.label)} <span id="sg-${g.id}"></span></h4>${g.items.map(i => `
     <label class="shop-item${done.has(i.id) ? ' done' : ''}" id="si-${escapeAttr(i.id)}"><input type="checkbox" ${done.has(i.id) ? 'checked' : ''} onchange="toggleShop('${escapeAttr(i.id)}', this.checked)" aria-label="${escapeAttr(i.name)}, ${escapeAttr(i.display)}">
       <span class="si-name">${escapeAttr(i.name)}${i.hint ? `<small>${escapeAttr(i.hint)}</small>` : ''}</span><span class="si-amt">${escapeAttr(i.display)}</span></label>`).join('')}</div>`).join('');
-  document.getElementById('shop-sub').textContent = `For one person, all ${shopList.days} days of your plan. ${shopList.count} items.`;
+  document.getElementById('shop-sub').textContent = month
+    ? `For one person, 30 days. Stock up on ${shopList.stockCount} items once, then top up ${shopList.freshCount} fresh items each week.`
+    : `For one person, all ${shopList.days} days of your plan. ${shopList.count} items.`;
   paintShopProgress();
 }
 function paintShopProgress() {
   if (!shopList || !shopList.ok) return;
-  const done = new Set(shopDone()); let n = 0;
+  const done = new Set(shopDoneIds()); let n = 0;
   for (const g of shopList.groups) { const c = g.items.filter(i => done.has(i.id)).length; n += c; const el = document.getElementById('sg-' + g.id); if (el) el.textContent = c + ' of ' + g.items.length; }
   document.getElementById('shop-count').textContent = n + ' of ' + shopList.count + ' bought';
   document.getElementById('shop-bar-fill').style.width = (shopList.count ? Math.round(100 * n / shopList.count) : 0) + '%';
 }
 function toggleShop(id, on) {
-  const prev = appState.shopping, set = new Set(prev && Array.isArray(prev.done) ? prev.done : []);
+  const item = shopItems().find(i => i.id === id); if (!item) return;
+  const st = shopState(), prev = st[item.bucket], set = new Set(prev && Array.isArray(prev.done) ? prev.done : []);
   if (on) set.add(id); else set.delete(id);
-  appState.shopping = set.size ? { since: (prev && prev.since) || shopToday(), done: [...set].slice(0, 80) } : null;
-  touch();
+  st[item.bucket] = set.size ? { since: (prev && prev.since) || shopToday(), done: [...set].slice(0, 80) } : null;
+  saveShopState(st);
   const row = document.getElementById('si-' + id); if (row) row.classList.toggle('done', !!on);
   paintShopProgress();
 }
-function clearShopTicks() { appState.shopping = null; touch(); paintShopping(); shopStatus('All ticks cleared.'); }
+function clearShopTicks() {                                        // clears the ticks of the list being shown
+  const st = shopState(), buckets = new Set(shopItems().map(i => i.bucket));
+  for (const b of buckets) st[b] = null;
+  saveShopState(st); paintShopping(); shopStatus('All ticks cleared.');
+}
 function shopStatus(msg) { const el = document.getElementById('shop-status'); el.textContent = msg; clearTimeout(shopStatus.t); shopStatus.t = setTimeout(() => { el.textContent = ''; }, 3500); }
-function shopText() { return shopMod.shoppingText(shopList, shopDone()); }
+function shopText() { return shopMod.shoppingText(shopList, shopDoneIds()); }
 async function copyShopping() {
   if (!shopList || !shopList.ok) return;
   const text = shopText();

@@ -623,13 +623,17 @@
   <div class="modal shop-modal" role="dialog" aria-modal="true" aria-labelledby="shop-title">
     <button class="modal-close" onclick="closeSimpleModal('shop-modal')" aria-label="Close">✕</button>
     <div class="shop-head">
-      <div class="modal-headline" id="shop-title">Weekly <span>shopping list</span></div>
+      <div class="modal-headline" id="shop-title">Shopping <span>list</span></div>
+      <div class="shop-period" id="shop-period" role="tablist" aria-label="Shopping period" hidden>
+        <button type="button" role="tab" id="shop-p-week" class="active" aria-selected="true" onclick="setShopPeriod('week')">Weekly</button>
+        <button type="button" role="tab" id="shop-p-month" aria-selected="false" onclick="setShopPeriod('month')">Monthly</button>
+      </div>
       <p class="modal-sub" id="shop-sub"></p>
       <div class="shop-progress" id="shop-progress" hidden><div class="shop-bar"><span id="shop-bar-fill"></span></div><b id="shop-count" aria-live="polite"></b></div>
     </div>
     <div class="shop-scroll">
       <div id="shop-body"></div>
-      <p class="shop-note">Amounts are for one person for the whole plan, rounded up so you do not run short. Weights are raw or dry where that matters. Salt, spices, sauces and drinks are not included. If you swap a food, this list updates. Ticks reset after a week.</p>
+      <p class="shop-note">Amounts are for one person for the whole plan, rounded up so you do not run short. Weights are raw or dry where that matters. Salt, spices, sauces and drinks are not included. Monthly: stock up on the long-lasting food once (freeze meat and bread in weekly portions) and buy the fresh food every week. If you swap a food, the list updates. Ticks reset after a week (monthly stock-up: after 30 days).</p>
     </div>
     <div class="shop-foot">
       <div class="shop-actions" id="shop-actions" hidden>
